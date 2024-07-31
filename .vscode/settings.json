@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./serl_robot_infra/franka_env/envs",
+        "./serl_robot_infra/franka_env/envs/test_env"
+    ]
+}
