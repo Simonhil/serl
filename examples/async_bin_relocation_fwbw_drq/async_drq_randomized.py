@@ -127,25 +127,33 @@ def actor(
     """
     if FLAGS.eval_checkpoint_step:
         for task in agents.keys():
+            ##comment form Simon: gets back to latest checkpoint
             ckpt = checkpoints.restore_checkpoint(
                 FLAGS.fw_ckpt_path if task == "fw" else FLAGS.bw_ckpt_path,
                 agents[task].state,
                 step=FLAGS.eval_checkpoint_step,
             )
             agents[task] = agents[task].replace(state=ckpt)
-
+        #comment from Simon setting basic parameters
         success_count = {"fw": 0, "bw": 0}
         overall_success_count = 0
         cycle_time = {"fw": [], "bw": []}
 
+        #comment from Simon loob for running trajektories
         for _ in range(FLAGS.eval_n_trajs):
+
+            #comment from Simon enshures fw and bw run
             for task_id, task_name in id_to_task.items():
                 env.set_task_id(task_id)
                 obs, _ = env.reset()
                 done = False
 
                 start_time = time.time()
+
+
                 while not done:
+
+                    #comment from Simon runnning one step adn evaluating it
                     actions = agents[task_name].sample_actions(
                         observations=jax.device_put(obs),
                         argmax=True,
@@ -153,7 +161,7 @@ def actor(
                     actions = np.asarray(jax.device_get(actions))
                     next_obs, reward, done, truncated, info = env.step(actions)
                     obs = next_obs
-
+                #comment from Simon outpuf of quality of the success
                 if reward:
                     dt = time.time() - start_time
                     cycle_time[task_name].append(dt)
@@ -297,7 +305,7 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
     """
     The learner loop, which runs when "--learner" is set to True.
     """
-    # set up wandb and logging
+    # set up weight and biases  logging
     wandb_logger = make_wandb_logger(
         project="serl_dev",
         description=FLAGS.exp_name or FLAGS.env,
