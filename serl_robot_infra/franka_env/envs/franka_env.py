@@ -15,6 +15,7 @@ from typing import Dict
 from franka_env.camera.video_capture import VideoCapture
 from franka_env.camera.rs_capture import RSCapture
 from franka_env.utils.rotations import euler_2_quat, quat_2_euler
+from serl_robot_infra.robot_servers.polymetis_interface import RpMainInterface
 
 
 class ImageDisplayer(threading.Thread):
@@ -164,6 +165,12 @@ class FrankaEnv(gym.Env):
         self.displayer.start()
         print("Initialized Franka")
 
+
+        #interface aiming to replace the robot_server 
+        self.server_interface =  RpMainInterface(config.robot_ip, config.port, config.gripper_ip, config.gripper_port, config.gripper_type, config.reset_joint_target , config.position_d_,
+                 config.target_pos, config.target_or, config.orientation_d_ 
+                 )
+
     def clip_safety_box(self, pose: np.ndarray) -> np.ndarray:
         """Clip the pose to be within the safety box."""
         pose[:3] = np.clip(
@@ -291,13 +298,22 @@ class FrankaEnv(gym.Env):
         Should override this method if custom reset procedure is needed.
         """
         # Change to precision mode for reset
-        requests.post(self.url + "update_param", json=self.config.PRECISION_PARAM)
+
+
+
+
+        # requests.post(self.url + "update_param", json=self.config.PRECISION_PARAM)
+        self.server_interface.update_param(self.config.PRECISION_PARAM)
+
+
+
+
         time.sleep(0.5)
 
         # Perform joint reset if needed
         if joint_reset:
             print("JOINT RESET")
-            requests.post(self.url + "jointreset")
+            self.server_interface.joint_reset()
             time.sleep(0.5)
 
         # Perform Carteasian reset
@@ -317,10 +333,19 @@ class FrankaEnv(gym.Env):
             self.interpolate_move(reset_pose, timeout=1.5)
 
         # Change to compliance mode
-        requests.post(self.url + "update_param", json=self.config.COMPLIANCE_PARAM)
+        # requests.post(self.url + "update_param", json=self.config.COMPLIANCE_PARAM)
+        self.server_interface.update_param(self.config.COMPLIANCE_PARAM)
+
+
+
+
+
+
+
 
     def reset(self, joint_reset=False, **kwargs):
-        requests.post(self.url + "update_param", json=self.config.COMPLIANCE_PARAM)
+        self.server_interface.update_param(self.config.COMPLIANCE_PARAM)
+
         if self.save_video:
             self.save_video_recording()
 
@@ -376,14 +401,18 @@ class FrankaEnv(gym.Env):
 
     def _recover(self):
         """Internal function to recover the robot from error state."""
-        requests.post(self.url + "clearerr")
+        self.server_interface.clear()
+   
 
     def _send_pos_command(self, pos: np.ndarray):
         """Internal function to send position command to the robot."""
         self._recover()
-        arr = np.array(pos).astype(np.float32)
-        data = {"arr": arr.tolist()}
-        requests.post(self.url + "pose", json=data)
+        # arr = np.array(pos).astype(np.float32)
+        # data = {"arr": arr.tolist()}
+        self.server_interface.pose(pos)
+
+
+
 
     def _send_gripper_command(self, pos: float, mode="binary"):
         """Internal function to send gripper command to the robot."""
@@ -392,7 +421,7 @@ class FrankaEnv(gym.Env):
                 pos <= -self.config.BINARY_GRIPPER_THREASHOLD
                 and self.gripper_binary_state == 0
             ):  # close gripper
-                requests.post(self.url + "close_gripper")
+                self.server_interface.close()
                 time.sleep(0.6)
                 self.gripper_binary_state = 1
                 return True
@@ -400,7 +429,7 @@ class FrankaEnv(gym.Env):
                 pos >= self.config.BINARY_GRIPPER_THREASHOLD
                 and self.gripper_binary_state == 1
             ):  # open gripper
-                requests.post(self.url + "open_gripper")
+                self.server_interface.open()
                 time.sleep(0.6)
                 self.gripper_binary_state = 0
                 return True
@@ -413,7 +442,8 @@ class FrankaEnv(gym.Env):
         """
         Internal function to get the latest state of the robot and its gripper.
         """
-        ps = requests.post(self.url + "getstate").json()
+        # ps = requests.post(self.url + "getstate").json()
+        ps = self.server_interface.get_state()
         self.currpos[:] = np.array(ps["pose"])
         self.currvel[:] = np.array(ps["vel"])
 

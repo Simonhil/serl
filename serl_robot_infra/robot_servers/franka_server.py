@@ -52,7 +52,7 @@ class FrankaServer:
         )
         self.jacobian_sub = rospy.Subscriber(
             "/cartesian_impedance_controller/franka_jacobian",
-            ZeroJacobian,
+            ZeroJacobian,#float64[42]
             self._set_jacobian,
         )
         self.state_sub = rospy.Subscriber(

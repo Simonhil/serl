@@ -39,7 +39,8 @@ class FrankaPCBInsert(FrankaEnv):
         self.interpolate_move(reset_pose, timeout=1)
 
         # Change to precision mode for reset
-        requests.post(self.url + "update_param", json=self.config.PRECISION_PARAM)
+        # requests.post(self.url + "update_param", json=self.config.PRECISION_PARAM)
+        self.server_interface.update_param(self.config.PRECISION_PARAM)
         time.sleep(0.5)
 
         # execute the go_to_rest method from the parent class
