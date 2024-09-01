@@ -1,5 +1,17 @@
 [flake8]
-exclude = .git
+exclude = 
+       .eggs
+       ,\.git
+       ,\.hg
+       ,\.mypy_cache
+       ,\.tox
+       ,\.venv
+       ,_build
+       ,buck-out
+       ,build
+       ,dist
+       ,third_party
+#include = '\.pyi?$' not flake 8 
 max-line-length = 88
 select = E,F,W,C
 ignore=W503,

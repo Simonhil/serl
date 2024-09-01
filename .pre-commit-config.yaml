@@ -32,3 +32,12 @@ repos:
         args:
           - --remove-empty-cells
           - --preserve-cell-outputs
+  #modified for polymetis backend
+    repo: local
+    hooks:
+      - id: cpp-format
+        name: C++ formatting
+        description: Runs format_cpp.sh
+        entry: polymetis/scripts/format_cpp.sh
+        args: [format]
+        language: script

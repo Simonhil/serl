@@ -10,7 +10,7 @@ setup(
         "pymodbus==2.5.3",
         "opencv-python",
         "pyquaternion",
-        "pyspacemouse",
+        #"pyspacemouse", 
         "hidapi",
         "pyyaml",
         "rospkg",

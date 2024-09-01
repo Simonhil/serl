@@ -1,0 +1,8 @@
+defaults:
+  - robot_model: franka_panda
+  - robot_client: franka_hardware  # [bullet_sim, franka_hardware, empty_statistics_client]
+
+server_exec: run_server
+ip: localhost
+port: 50051
+timeout: 15
