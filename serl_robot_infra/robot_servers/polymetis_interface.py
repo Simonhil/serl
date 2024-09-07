@@ -12,13 +12,18 @@
 
 
 
+from math import sqrt
 from scipy.spatial.transform import Rotation as R
-from polymetis.python.torchcontrol.modules.feedforward import Coriolis
+from torchcontrol.modules.feedforward import Coriolis
+from serl_robot_infra.robot_servers.config import ConfigParam
 from serl_robot_infra.robot_servers.gripper_server import GripperServer
 from polymetis import GripperInterface, RobotInterface
 import torch
 import numpy as np
 import time
+
+from serl_robot_infra.robot_servers.helper import pseudo_inverse
+
 
 class RepFrankaGripperServer(GripperServer):
     """_summary_ provides an an interface to acomplish the same methods 
@@ -78,11 +83,15 @@ class RepFrankaServer:
     (as well as backup) joint recovery policy."""
 
 
-    def __init__(self, robot_ip, gripper_type, port, reset_joint_target : torch.Tensor, position_d_ : torch.Tensor, orientation_d_ : torch.Tensor ): 
+    def __init__(self, robot_ip, gripper_type, port, reset_joint_target : torch.Tensor,
+                  position_d_ : torch.Tensor, orientation_d_ : torch.Tensor, 
+                  translational_clip_min_,translational_clip_max_): 
         
     
-
-        
+        self.translational_clip_min_ = torch.Tensor([-ConfigParam.TRANSLATIONAL_CLIP_NEG_X["default"], -ConfigParam.TRANSLATIONAL_CLIP_NEG_Y["default"], -ConfigParam.TRANSLATIONAL_CLIP_NEG_Z["default"]])
+        self.translational_clip_max_ = torch.Tensor([ConfigParam.TRANSLATIONAL_CLIP_X["default"], ConfigParam.TRANSLATIONAL_CLIP_Y["default"], ConfigParam.TRANSLATIONAL_CLIP_Z["default"]])
+        self.rotational_clip_min = torch.Tensor([-ConfigParam.ROTATIONAL_CLIP_NEG_X["default"], -ConfigParam.ROTATIONAL_CLIP_NEG_Y["default"], -ConfigParam.ROTATIONAL_CLIP_NEG_Z["default"]])
+        self.rotational_clip_max = torch.Tensor([ConfigParam.ROTATIONAL_CLIP_X["default"], ConfigParam.ROTATIONAL_CLIP_Y["default"], ConfigParam.ROTATIONAL_CLIP_Z["default"]])
         
         
         
@@ -91,17 +100,42 @@ class RepFrankaServer:
         self.robot_ip = robot_ip
         self.reset_joint_target = reset_joint_target
         self.position_d_ = position_d_
+        self.position_d_target = torch.zeros(3, dtype=torch.float64)
         self.orientation_d_ = orientation_d_
-
-        
+        self.orientation_d_target = torch.tensor([0.0, 0.0, 0.0, 1.0], dtype=torch.float64)  # [x, y, z, w]
         #self.gripper_type = gripper_type
-
         self.robot = RobotInterface(
                     ip_address= robot_ip, enforce_version=False, port = port
                 )
-        
         self.robot_model = self.robot.robot_model
-        self.corioles= Coriolis(self.robot_module)
+        self.corioles= Coriolis(self.robot_model)
+        self.error_ =torch.zeros(6)
+        self.error_i = torch.zeros(6)
+        self.jacobian_array = torch.zeros(42, dtype=torch.float64)
+        self.filter_params = 0.005
+        self.nullspace_stiffness = 20.0
+        self.nullspace_stiffness_target = 20.0
+        self.joint1_nullspace_stiffness = 20.0
+        self.joint1_nullspace_stiffness_target = 20.0
+        self.delta_tau_max = 1.0
+        self.cartesian_stiffness = torch.zeros((6, 6), dtype=torch.float64)
+        self.cartesian_stiffness_target = torch.zeros((6, 6), dtype=torch.float64)
+        self.cartesian_damping = torch.zeros((6, 6), dtype=torch.float64)
+        self.cartesian_damping_target = torch.zeros((6, 6), dtype=torch.float64)
+        self.Ki = torch.zeros((6, 6), dtype=torch.float64)
+        self.Ki_target = torch.zeros((6, 6), dtype=torch.float64)
+        # Created from the input parameter
+        self.q_d_nullspace = torch.zeros(7, dtype=torch.float64)
+  
+
+        # Quaternion handling
+        
+ 
+
+
+
+
+
         # self.eepub = rospy.Publisher(
         #     "/cartesian_impedance_controller/equilibrium_pose",
         #     geom_msg.PoseStamped,
@@ -211,32 +245,119 @@ class RepFrankaServer:
     #to do once robot state is certen
     def update(self,precission_params): #time, duration, 
 
-        robot_state = self.robot.get_robot_state()
-        coriolisforces : torch.Tensor = self.corioles.forward(     )
-        jacobian = self._set_jacobian(          )
+
+
+        state = self.robot.get_robot_state()
+        # coriolis is 7x1 
+        coriolisforces : torch.Tensor = self.corioles.forward
+        (torch.tensor(state.joint_positions),torch.tensor(state.joint_velocities)     )
+        # 6x7 matrix
+        jacobian = self._set_jacobian(torch.tensor(state.joint_positions))
 
         # #reforming: 
-        # coriolisforces #7x1
-        # jacobian #6x7
-        # jointpo #7x1
-        # jointvel #7x1
+        joint_pos = torch.tensor(state.joint_positions)
+        joint_vel = torch.tensor(state.joint_velocitie)
+        ee_pos, ee_quat = self.robot.get_ee_pose()
+
         #tau_J_d #7x1 Measured link-side joint torque sensor signals
+        tau_J_d = self.robot.
         #O_t_EE 'Measured end effector pose in base frame.
 
-
-        # Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
-        # Eigen::Vector3d position(transform.translation());
-        # Eigen::Quaterniond orientation(transform.linear());
+        # ee pose??
+            # Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+            # Eigen::Vector3d position(transform.translation());
+            # Eigen::Quaterniond orientation(transform.linear());
 
 
         
-        error_ = np.zeros(6)
-        error_[:3] = position - position_d_
-        error_[:3] = np.clip(error_[:3], translational_clip_min_, translational_clip_max_)
-
-
-        #weiter bei quarternionen
+       
+        self.error_[:3] = ee_pos - self.position_d_
+        # positon error
+       
+        self.error_[:3] = torch.minimum(torch.maximum(self.error_[3:],self.translational_clip_min_), self.translational_clip_max_)
+        # orientation error
+        temp_or =R.from_quat(ee_quat)
+        if torch.dot(self.orientation_d_, ee_quat) < 0.0:
+            temp_or = - temp_or
         
+        temp_or =R.from_quat(ee_quat)
+        or_d = R.from_quat(self.orientation_d_)
+        error_quat = temp_or.__mul__(or_d)
+
+
+        # "difference" quaternion
+        self.error_[3:] = error_quat.as_quat()[:3]
+        # Transform to base frame
+        # Clip rotation error
+        
+
+
+
+
+
+
+        # TODO
+        # what is teh equivalent ???????? transformation to base frame??
+        # error_.tail(3) << -transform.linear() * error_.tail(3);
+        # Clip rotation error
+        self.error_[3:] = torch.minimum(torch.maximum(self.error_[3:], self.rotational_clip_min), self.rotational_clip_max)
+
+
+
+
+        # clip error
+        self.error_i[:3] =  torch.clamp((self.error_i[:3] + self.error_[:3]), min=-0.1, max=0.1)
+        self.error_i[3:] =  torch.clamp((self.error_i[3:] + self.error_[3:]), min=-0.3, max=0.3)
+
+
+
+        # // compute control
+        # // allocate variables
+
+        tau_task, tau_nullspace, tau_d = torch.zeros(7)
+
+        # // pseudoinverse for nullspace handling
+        # // kinematic pseuoinverse
+
+        jacobian_transpose = pseudo_inverse (self.jacobian.T)
+    
+
+        tau_task = jacobian.T @ (-self.cartesian_stiffness_ @ self.error_ - self.cartesian_damping_ @ (self.jacobian @ self.dq) - self.Ki_ @ self.error_i)
+
+        # Eigen::Matrix<double, 7, 1> dqe;
+        # Eigen::Matrix<double, 7, 1> qe;
+        qe, dqe = torch.Tensor(7)
+        qe = self.q_d_nullspace_ - self.q
+        qe[1] = qe[1] * self.joint1_nullspace_stiffness_
+        dqe = self.dq
+        dqe[1] =  dqe[1] * 2.0 * sqrt(self.joint1_nullspace_stiffness_)
+        ident= torch.eye(7)
+        tau_nullspace  (ident - self.jacobian.T @ jacobian_transpose) @ (self. nullspace_stiffness_ * qe - (2.0 * sqrt(self. nullspace_stiffness_)) * dqe)
+        
+        # // Desired torque
+        tau_d =  tau_task + tau_nullspace + coriolisforces
+        
+        # // Saturate torque rate to avoid discontinuities
+        tau_d = saturateTorqueRate(tau_d, tau_J_d);
+
+        # for (size_t i = 0; i < 7; ++i) {
+        #     joint_handles_[i].setCommand(tau_d(i));
+        # }
+
+        # // update parameters changed online either through dynamic reconfigure or through the interactive
+        # // target by filtering
+        # cartesian_stiffness_ =
+        #     filter_params_ * cartesian_stiffness_target_ + (1.0 - filter_params_) * cartesian_stiffness_;
+        # cartesian_damping_ =
+        #     filter_params_ * cartesian_damping_target_ + (1.0 - filter_params_) * cartesian_damping_;
+        # nullspace_stiffness_ =
+        #     filter_params_ * nullspace_stiffness_target_ + (1.0 - filter_params_) * nullspace_stiffness_;
+        # joint1_nullspace_stiffness_ =
+        #     filter_params_ * joint1_nullspace_stiffness_target_ + (1.0 - filter_params_) * joint1_nullspace_stiffness_;
+        # position_d_ = filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
+        # orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
+        # Ki_ = filter_params_ * Ki_target_ + (1.0 - filter_params_) * Ki_;
+        # }
 
 
 
@@ -257,17 +378,15 @@ class RepFrankaServer:
 
 
     #todo after print status
-    def _set_currpos(self, msg):
+    def _set_currpos(self):
         #Last commanded end effector pose of motion generation in base frame.
         #Pose is represented as a 4x4 matrix in column-major format. 
-        tmatrix = np.array(list(msg.O_T_EE)).reshape(4, 4).T 
-        r = R.from_matrix(tmatrix[:3, :3])
-        pose = np.concatenate([tmatrix[:3, -1], r.as_quat()])
-        self.pos = pose
-        self.dq = np.array(list(msg.dq)).reshape((7,))#joint velocity
-        self.q = np.array(list(msg.q)).reshape((7,))# joint angles
-        self.force = np.array(list(msg.K_F_ext_hat_K)[:3])
-        self.torque = np.array(list(msg.K_F_ext_hat_K)[3:])
+
+        self.pos = self.robot.get_ee_pose().numpy().tolist()
+        self.dq = np.array(self.robot.get_robot_state().joint_velocities).tolist() #joint velocity
+        self.q = np.array(self.robot.get_robot_state().joint_positions).tolist()# joint angles
+        self.force = np.array([0,0,0,0,0,0,0])
+        self.torque = np.array(self.robot.get_robot_state().joint_torques_computed).tolist()
         try:
             self.vel = self.jacobian @ self.dq
         except:
@@ -278,25 +397,23 @@ class RepFrankaServer:
         self.jacobian = self.robot.robot_model.compute_jacobian(joint_angles)
     
 
-    def get_pos():
-        pass
+    def get_pos(self):
+       return self.pos
 
-    def get_vel():
-        pass
+    def get_vel(self):
+        return self.vel
      
-    def get_force():
-        pass
+    def get_force(self):
+        return self.force
 
-    def get_torque():
-        pass
-    def get_q():
-        pass
+    def get_torque(self):
+        return self.torque
 
-    def get_dq():
-        pass
+    def get_q(self):
+        return self.q
 
-    def get_state():
-        pass
+    def get_dq(self):
+        return self.dq
 
 
 ###########################################################################################
@@ -350,8 +467,8 @@ class RpMainInterface:
 
     def get_pos_euler(self):
         pos = self.get_pos()
-        #convert to euler 
-        euler = 0
+        r = R.from_quat(pos[3:])
+        euler = r.as_euler("xyz")
         return euler
 
     def get_vel(self):
@@ -457,31 +574,25 @@ class RpMainInterface:
     # Route for getting all state information
   
     def get_state(self):
-        # return jsonify(
-        #     {
-        #         "pose": np.array(robot_server.pos).tolist(),
-        #         "vel": np.array(robot_server.vel).tolist(),
-        #         "force": np.array(robot_server.force).tolist(),
-        #         "torque": np.array(robot_server.torque).tolist(),
-        #         "q": np.array(robot_server.q).tolist(),
-        #         "dq": np.array(robot_server.dq).tolist(),
-        #         "jacobian": np.array(robot_server.jacobian).tolist(),
-        #         "gripper_pos": gripper_server.gripper_pos,
-        #     }
-        # )
-        return self.robot.get_state()
+        return (
+            {
+                "pose": self.robot.pos,
+                "vel": self.robot.vel,
+                "force": self.robot.force,
+                "torque": self.robot.torque,
+                "q": self.robot.q,
+                "dq": self.robot.dq,
+                "jacobian": self.robot.jacobian,
+                "gripper_pos":self.gripper.get_pos(),
+            }
+        )
     
 
 
 
     # Route for updating compliance parameters
    
-    def update_param(self, precission_params):
+    def update_param(self, params):
         # reconf_client.update_configuration(request.json)
         # return "Updated compliance parameters"
-        self.robot.update(precission_params)
-
-
-
-if __name__ == "__main__":
-    app.run(main)
+        self.robot.update(params)
