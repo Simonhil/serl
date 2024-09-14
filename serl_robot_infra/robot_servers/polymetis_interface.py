@@ -22,7 +22,7 @@ import torch
 import numpy as np
 import time
 
-from serl_robot_infra.robot_servers.helper import pseudo_inverse
+from serl_robot_infra.robot_servers.helper import pseudo_inverse, saturate_torque_rate
 
 
 class RepFrankaGripperServer(GripperServer):
@@ -126,7 +126,6 @@ class RepFrankaServer:
         self.Ki_target = torch.zeros((6, 6), dtype=torch.float64)
         # Created from the input parameter
         self.q_d_nullspace = torch.zeros(7, dtype=torch.float64)
-  
 
         # Quaternion handling
         
@@ -260,7 +259,9 @@ class RepFrankaServer:
         ee_pos, ee_quat = self.robot.get_ee_pose()
 
         #tau_J_d #7x1 Measured link-side joint torque sensor signals
-        tau_J_d = self.robot.
+        tau_J_d = self.robot.joint_torques_computed
+
+
         #O_t_EE 'Measured end effector pose in base frame.
 
         # ee pose??
@@ -337,27 +338,25 @@ class RepFrankaServer:
         # // Desired torque
         tau_d =  tau_task + tau_nullspace + coriolisforces
         
+
         # // Saturate torque rate to avoid discontinuities
-        tau_d = saturateTorqueRate(tau_d, tau_J_d);
+        tau_d = saturate_torque_rate(tau_d, tau_J_d)
 
         # for (size_t i = 0; i < 7; ++i) {
         #     joint_handles_[i].setCommand(tau_d(i));
         # }
 
-        # // update parameters changed online either through dynamic reconfigure or through the interactive
-        # // target by filtering
-        # cartesian_stiffness_ =
-        #     filter_params_ * cartesian_stiffness_target_ + (1.0 - filter_params_) * cartesian_stiffness_;
-        # cartesian_damping_ =
-        #     filter_params_ * cartesian_damping_target_ + (1.0 - filter_params_) * cartesian_damping_;
-        # nullspace_stiffness_ =
-        #     filter_params_ * nullspace_stiffness_target_ + (1.0 - filter_params_) * nullspace_stiffness_;
-        # joint1_nullspace_stiffness_ =
-        #     filter_params_ * joint1_nullspace_stiffness_target_ + (1.0 - filter_params_) * joint1_nullspace_stiffness_;
-        # position_d_ = filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
-        # orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
-        # Ki_ = filter_params_ * Ki_target_ + (1.0 - filter_params_) * Ki_;
-        # }
+        
+        #update parameters changed online either through dynamic reconfigure or through the interactive
+        # target by filtering
+        self.cartesian_stiffness_ = self.filter_params_ * self.cartesian_stiffness_target_ + (1.0 - self.filter_params_) * self.cartesian_stiffness_
+        self.cartesian_damping_ = self.filter_params_ * self.cartesian_damping_target_ + (1.0 - self.filter_params_) * self.cartesian_damping_
+        self.nullspace_stiffness_ = self.filter_params_ * self.nullspace_stiffness_target_ + (1.0 - self.filter_params_) * self.nullspace_stiffness_
+        self.joint1_nullspace_stiffness_ = self.filter_params_ * self.joint1_nullspace_stiffness_target_ + (1.0 - self.filter_params_) * self.oint1_nullspace_stiffness_
+        self.position_d_ = self.filter_params_ * self.position_d_target_ + (1.0 - self.filter_params_) * self.position_d_
+        self.orientation_d_ = self.orientation_d_.slerp(self.filter_params_, self.orientation_d_target_)
+        self.Ki_ = self.filter_params_ * self.Ki_target_ + (1.0 - self.filter_params_) * self.Ki_
+        
 
 
 
@@ -381,12 +380,18 @@ class RepFrankaServer:
     def _set_currpos(self):
         #Last commanded end effector pose of motion generation in base frame.
         #Pose is represented as a 4x4 matrix in column-major format. 
-
+        state = self.robot.get_robot_state()
         self.pos = self.robot.get_ee_pose().numpy().tolist()
-        self.dq = np.array(self.robot.get_robot_state().joint_velocities).tolist() #joint velocity
-        self.q = np.array(self.robot.get_robot_state().joint_positions).tolist()# joint angles
+        self.dq = torch.Tensor(state.joint_velocities).tolist() #joint velocity
+        self.q = torch.Tensor(state.joint_positions).tolist()# joint angles
+        
+        #TODO Is that right
+        temp_Jac = self._set_jacobian(self.q)
+        ext_force_torque = temp_Jac.T @ state.motor_torques_external
+        #end_ee force TODO
         self.force = np.array([0,0,0,0,0,0,0])
-        self.torque = np.array(self.robot.get_robot_state().joint_torques_computed).tolist()
+        #end_ee torque TODO
+        self.torque = np.array([0])
         try:
             self.vel = self.jacobian @ self.dq
         except:
