@@ -72,7 +72,7 @@ class BaseRobotInterface:
         name: str = None,
         ip_address: str = "localhost",
         port: int = 50051,
-        enforce_version=True,
+        enforce_version= False,
         use_mirror_sim: bool = False,
         mirror_cfg: DictConfig = None,
         mirror_ip: str = "",
@@ -677,6 +677,7 @@ class RobotInterface(BaseRobotInterface):
         """Update the desired joint positions used by the joint position control mode.
         Requires starting a joint impedance controller with `start_joint_impedance` beforehand.
         """
+
         try:
             update_idx = self.update_current_policy({"joint_pos_desired": positions})
         except grpc.RpcError as e:
@@ -703,6 +704,8 @@ class RobotInterface(BaseRobotInterface):
         joint_pos_desired, success = self.solve_inverse_kinematics(
             ee_pos_desired, ee_quat_desired, joint_pos_current
         )
+
+
         if not success:
             log.warning(
                 "Unable to find valid joint target. Skipping update_desired_ee_pose command..."

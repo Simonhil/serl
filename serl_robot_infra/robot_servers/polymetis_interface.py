@@ -15,17 +15,18 @@
 from math import sqrt
 from scipy.spatial.transform import Rotation as R
 from torchcontrol.modules.feedforward import Coriolis
-from serl_robot_infra.robot_servers.config import ConfigParam
-from serl_robot_infra.robot_servers.gripper_server import GripperServer
+from robot_servers.config import ConfigParam
 from polymetis import GripperInterface, RobotInterface
+from robot_servers.helper import pseudo_inverse, saturate_torque_rate
 import torch
 import numpy as np
 import time
 
-from serl_robot_infra.robot_servers.helper import pseudo_inverse, saturate_torque_rate
 
 
-class RepFrankaGripperServer(GripperServer):
+
+
+class RepFrankaGripperServer:
     """_summary_ provides an an interface to acomplish the same methods 
     as the FrankaGripperServer but using polimetis
 
@@ -34,7 +35,7 @@ class RepFrankaGripperServer(GripperServer):
     """
     
 
-    def __init__(self, id, port):
+    def __init__(self, ip, port):
         super().__init__()
         self.gripper = GripperInterface(
                 ip_address=ip,
@@ -71,8 +72,8 @@ class RepFrankaGripperServer(GripperServer):
     # def _update_gripper(self, msg):
     #     """internal callback to get the latest gripper position."""
     #     self.gripper_pos = np.sum(msg.position)
-    def get_pos():
-        pass
+    def get_pos(self):
+        return self.gripper.get_state()
 
 
 
@@ -85,7 +86,7 @@ class RepFrankaServer:
 
     def __init__(self, robot_ip, gripper_type, port, reset_joint_target : torch.Tensor,
                   position_d_ : torch.Tensor, orientation_d_ : torch.Tensor, 
-                  translational_clip_min_,translational_clip_max_): 
+                 ): 
         
     
         self.translational_clip_min_ = torch.Tensor([-ConfigParam.TRANSLATIONAL_CLIP_NEG_X["default"], -ConfigParam.TRANSLATIONAL_CLIP_NEG_Y["default"], -ConfigParam.TRANSLATIONAL_CLIP_NEG_Z["default"]])
@@ -96,14 +97,14 @@ class RepFrankaServer:
         
         
         
-        
+        self.jacobian: torch.Tensor
         self.robot_ip = robot_ip
         self.reset_joint_target = reset_joint_target
         self.position_d_ = position_d_
         self.position_d_target = torch.zeros(3, dtype=torch.float64)
         self.orientation_d_ = orientation_d_
         self.orientation_d_target = torch.tensor([0.0, 0.0, 0.0, 1.0], dtype=torch.float64)  # [x, y, z, w]
-        #self.gripper_type = gripper_type
+        self.gripper_type = gripper_type
         self.robot = RobotInterface(
                     ip_address= robot_ip, enforce_version=False, port = port
                 )
@@ -157,14 +158,13 @@ class RepFrankaServer:
 
 
 
-    def start_impedance(self, target_pos, target_or):
+    def start_impedance(self, ):
         """Launches the impedance controller"""
-        # 
         
-        cart_control = self.robot.start_cartesian_impedance()
-        self.robot.update_desired_ee_pose(target_pos,target_or)
+        pos ,ori = self.robot.get_ee_pose()
+        self.cart_control = self.robot.start_cartesian_impedance()
+        self.robot.update_desired_ee_pose(pos, ori)
 
-        time.sleep(5)
 
     #replaces the current impedance controller thereby stopping it
     def stop_impedance(self):
@@ -193,7 +193,7 @@ class RepFrankaServer:
         # Launch joint controller reset
         # set rosparm with rospkg
         # rosparam set /target_joint_positions '[q1, q2, q3, q4, q5, q6, q7]'
-        self.robot.et_home_pose(self.reset_joint_target)
+        self.robot.set_home_pose(self.reset_joint_target)
 
         self.joint_controller = self.robot.start_joint_impedance()
             #stdout=subprocess.PIPE,
@@ -219,7 +219,7 @@ class RepFrankaServer:
 
         # Stop joint controller
         print("RESET DONE")
-        self.joint_controller = self.robot.start_joint_impedance()
+        # self.joint_controller = self.robot.start_joint_impedance()
         time.sleep(1)
         #self.clear()
         #print("KILLED JOINT RESET", self.pos)
@@ -239,10 +239,10 @@ class RepFrankaServer:
     
         position = torch.Tensor(pose[:3])
         orientation = torch.Tensor(pose[3:])
-        self.robot.move_to_ee_position(position, orientation)
+        self.robot.move_to_ee_pose(position, orientation, time_to_go = 3)
 
     #to do once robot state is certen
-    def update(self,precission_params): #time, duration, 
+    """  def update(self,precission_params): #time, duration, 
 
 
 
@@ -349,14 +349,14 @@ class RepFrankaServer:
         
         #update parameters changed online either through dynamic reconfigure or through the interactive
         # target by filtering
-        self.cartesian_stiffness_ = self.filter_params_ * self.cartesian_stiffness_target_ + (1.0 - self.filter_params_) * self.cartesian_stiffness_
+        self.cartesian_stiffness_ = self.filter_params * self.cartesian_stiffness_target_ + (1.0 - self.filter_params_) * self.cartesian_stiffness_
         self.cartesian_damping_ = self.filter_params_ * self.cartesian_damping_target_ + (1.0 - self.filter_params_) * self.cartesian_damping_
         self.nullspace_stiffness_ = self.filter_params_ * self.nullspace_stiffness_target_ + (1.0 - self.filter_params_) * self.nullspace_stiffness_
         self.joint1_nullspace_stiffness_ = self.filter_params_ * self.joint1_nullspace_stiffness_target_ + (1.0 - self.filter_params_) * self.oint1_nullspace_stiffness_
         self.position_d_ = self.filter_params_ * self.position_d_target_ + (1.0 - self.filter_params_) * self.position_d_
         self.orientation_d_ = self.orientation_d_.slerp(self.filter_params_, self.orientation_d_target_)
         self.Ki_ = self.filter_params_ * self.Ki_target_ + (1.0 - self.filter_params_) * self.Ki_
-        
+        """
 
 
 
@@ -370,7 +370,10 @@ class RepFrankaServer:
 
 
 
-
+    def _set_jacobian(self, joint_angles):
+        self.jacobian = self.robot.robot_model.compute_jacobian(joint_angles)
+        return self._set_jacobian
+       
 
 
 
@@ -381,29 +384,28 @@ class RepFrankaServer:
         #Last commanded end effector pose of motion generation in base frame.
         #Pose is represented as a 4x4 matrix in column-major format. 
         state = self.robot.get_robot_state()
-        self.pos = self.robot.get_ee_pose().numpy().tolist()
-        self.dq = torch.Tensor(state.joint_velocities).tolist() #joint velocity
-        self.q = torch.Tensor(state.joint_positions).tolist()# joint angles
+        self.pos, self.orientation = self.robot.get_ee_pose()
+        self.dq = torch.Tensor(state.joint_velocities) #joint velocity
+        self.q = torch.Tensor(state.joint_positions)# joint angles
         
         #TODO Is that right
-        temp_Jac = self._set_jacobian(self.q)
-        ext_force_torque = temp_Jac.T @ state.motor_torques_external
-        #end_ee force TODO
-        self.force = np.array([0,0,0,0,0,0,0])
-        #end_ee torque TODO
-        self.torque = np.array([0])
+        self._set_jacobian(self.q)
+        temp_Jac = self.jacobian
+        temp_ext = torch.Tensor(state.motor_torques_external)
+        ext_force_torque = pseudo_inverse(temp_Jac.T) @ temp_ext
+        self.force = ext_force_torque[:3]
+        self.torque = ext_force_torque[3:]
+        print(ext_force_torque)
         try:
             self.vel = self.jacobian @ self.dq
         except:
             self.vel = np.zeros(6)
             print("Jacobian not set, end-effector velocity temporarily not available")
 
-    def _set_jacobian(self, joint_angles):
-        self.jacobian = self.robot.robot_model.compute_jacobian(joint_angles)
-    
+
 
     def get_pos(self):
-       return self.pos
+       return self.robot.get_ee_pose()
 
     def get_vel(self):
         return self.vel
@@ -425,12 +427,12 @@ class RepFrankaServer:
 
 class RpMainInterface:
 
-    def __init__(self, robot_ip, port, gripper_ip, gripper_port, gripper_type, reset_joint_target : torch.Tensor, position_d_ : torch.Tensor,
+    def __init__(self,ip, port, gripper_port, gripper_type, reset_joint_target : torch.Tensor, position_d_ : torch.Tensor,
                  target_pos, target_or, orientation_d_ : torch.Tensor, 
                  ): 
         self.target_pos = target_pos
         self.targget_or = target_or
-        self.robot = RepFrankaServer(robot_ip,gripper_type, port, reset_joint_target , position_d_, orientation_d_ )
+        self.robot = RepFrankaServer(ip,gripper_type, port, reset_joint_target , position_d_, orientation_d_ )
 
 
         if gripper_type == "Robotiq":
@@ -439,13 +441,13 @@ class RpMainInterface:
 
             gripper_server = RobotiqGripperServer(gripper_ip=GRIPPER_IP)
         elif gripper_type == "Franka":
-            self.gripper = RepFrankaGripperServer(gripper_ip, gripper_port)
+            self.gripper = RepFrankaGripperServer(ip, gripper_port)
         elif gripper_type == "None":
             pass
         else:
             raise NotImplementedError("Gripper Type Not Implemented")
 
-        self.robot.start_impedance(target_pos, target_or)
+        self.robot.start_impedance()
 #     reconf_client = ReconfClient(
 #         "cartesian_impedance_controllerdynamic_reconfigure_compliance_param_node"
 #     )
@@ -500,7 +502,7 @@ class RpMainInterface:
     
     def get_jacobian(self):
         # return jsonify({"jacobian": np.array(robot_server.jacobian).tolist()})
-        return self.robot.jacobian
+        return self.robot._set_jacobian()
 
     # Route for getting gripper distance
     def get_gripper(self):
@@ -568,7 +570,7 @@ class RpMainInterface:
         # return "Clear"
         pass
 
-    # Route for Sending a pose command
+    # Route for Sending a pose command [x,y,z, q1,q2,q3,q4]
 
     def pose(self,pos):
       
@@ -579,6 +581,7 @@ class RpMainInterface:
     # Route for getting all state information
   
     def get_state(self):
+        self.robot._set_currpos()
         return (
             {
                 "pose": self.robot.pos,
@@ -596,8 +599,8 @@ class RpMainInterface:
 
 
     # Route for updating compliance parameters
-   
+    # TODO robably important for controller and optimised movement
     def update_param(self, params):
         # reconf_client.update_configuration(request.json)
         # return "Updated compliance parameters"
-        self.robot.update(params)
+        pass
