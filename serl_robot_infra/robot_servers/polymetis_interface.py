@@ -14,13 +14,17 @@
 
 from math import sqrt
 from scipy.spatial.transform import Rotation as R
-from torchcontrol.modules.feedforward import Coriolis
+import torch
+
+
 from robot_servers.config import ConfigParam
 from polymetis import GripperInterface, RobotInterface
 from robot_servers.helper import pseudo_inverse, saturate_torque_rate
-import torch
+
 import numpy as np
 import time
+
+from torchcontrol.modules.feedforward import Coriolis
 
 
 
@@ -84,8 +88,7 @@ class RepFrankaServer:
     (as well as backup) joint recovery policy."""
 
 
-    def __init__(self, robot_ip, gripper_type, port, reset_joint_target : torch.Tensor,
-                  position_d_ : torch.Tensor, orientation_d_ : torch.Tensor, 
+    def __init__(self, robot_ip, port, reset_joint_target : torch.Tensor, 
                  ): 
         
     
@@ -100,11 +103,8 @@ class RepFrankaServer:
         self.jacobian: torch.Tensor
         self.robot_ip = robot_ip
         self.reset_joint_target = reset_joint_target
-        self.position_d_ = position_d_
         self.position_d_target = torch.zeros(3, dtype=torch.float64)
-        self.orientation_d_ = orientation_d_
         self.orientation_d_target = torch.tensor([0.0, 0.0, 0.0, 1.0], dtype=torch.float64)  # [x, y, z, w]
-        self.gripper_type = gripper_type
         self.robot = RobotInterface(
                     ip_address= robot_ip, enforce_version=False, port = port
                 )
@@ -427,12 +427,12 @@ class RepFrankaServer:
 
 class RpMainInterface:
 
-    def __init__(self,ip, port, gripper_port, gripper_type, reset_joint_target : torch.Tensor, position_d_ : torch.Tensor,
-                 target_pos, target_or, orientation_d_ : torch.Tensor, 
+    def __init__(self,ip, port, gripper_port, gripper_type, reset_joint_target : torch.Tensor,
+                 target_pos, target_or, 
                  ): 
         self.target_pos = target_pos
         self.targget_or = target_or
-        self.robot = RepFrankaServer(ip,gripper_type, port, reset_joint_target , position_d_, orientation_d_ )
+        self.robot = RepFrankaServer(ip, port, reset_joint_target)
 
 
         if gripper_type == "Robotiq":

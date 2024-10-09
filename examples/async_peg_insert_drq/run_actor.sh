@@ -9,4 +9,4 @@ python async_drq_randomized.py "$@" \
     --random_steps 0 \
     --training_starts 200 \
     --encoder_type resnet-pretrained \
-    --demo_path peg_insert_20_demos_2023-12-25_16-13-25.pkl \
+    --demo_path /home/shilber/delete/peg_insert__demos_2024-10-02_14-48-44.pkl \

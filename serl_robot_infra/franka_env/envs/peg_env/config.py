@@ -6,20 +6,27 @@ class PegEnvConfig(DefaultEnvConfig):
     """Set the configuration for FrankaEnv."""
 
     SERVER_URL: str = "http://127.0.0.1:5000/"
-    REALSENSE_CAMERAS = {
-        "wrist_1": "130322274175",
-        "wrist_2": "127122270572",
+    CAMERAS = {
+       "front": {
+        "serial_number": "130322274175",
+        "type": "oak-d" 
+       },
+        "top": {
+        "serial_number": "130322274175",
+        "type": "oak-d" 
+       },
+        "side": {
+        "serial_number": "130322274175",
+        "type": "oak-d" 
+       }
+   
     }
     TARGET_POSE = np.array(
-        [
-            0.5906439143742067,
-            0.07771711953459341,
-            0.0937835826958042,
-            3.1099675,
-            0.0146619,
-            -0.0078615,
-        ]
+        
+           [ 0.6851, -0.0837,  0.2863, -2.9307,  1.0382,  0.0426]
+        
     )
+
     RESET_POSE = TARGET_POSE + np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0])
     REWARD_THRESHOLD: np.ndarray = np.array([0.01, 0.01, 0.01, 0.2, 0.2, 0.2])
     APPLY_GRIPPER_PENALTY = False
@@ -87,3 +94,11 @@ class PegEnvConfig(DefaultEnvConfig):
         "rotational_clip_neg_z": 0.05,
         "rotational_Ki": 0.1,
     }
+
+    ROBOT_IP="141.3.53.63"
+    ROBOT_PORT = 50043
+    GRIPPER_PORT= 50054
+    GRIPPER_TYPE= "Franka"
+    """ RESET_JOINT_TARGET= """
+   
+

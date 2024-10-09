@@ -8,9 +8,8 @@ python async_drq_randomized.py "$@" \
     --random_steps 1000 \
     --training_starts 200 \
     --critic_actor_ratio 4 \
-    --batch_size 256 \
     --eval_period 2000 \
     --encoder_type resnet-pretrained \
-    --demo_path peg_insert_20_demos_2023-12-25_16-13-25.pkl \
+    --demo_path /home/shilber/delete/peg_insert__demos_2024-10-09_11-10-11.pkl\
     --checkpoint_period 1000 \
-    --checkpoint_path /home/undergrad/code/serl_dev/examples/async_peg_insert_drq/5x5_20degs_20demos_rand_peg_insert_097
+    --checkpoint_path /home/shilber/delete/test1\

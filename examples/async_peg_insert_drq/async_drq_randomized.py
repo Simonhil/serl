@@ -5,18 +5,21 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tqdm
+from tqdm import tqdm
 from absl import app, flags
 from flax.training import checkpoints
 
 import gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
 
+
+from franka_env.envs.relative_env import RelativeFrame
 from serl_launcher.agents.continuous.drq import DrQAgent
 from serl_launcher.common.evaluation import evaluate
 from serl_launcher.utils.timer_utils import Timer
 from serl_launcher.wrappers.chunking import ChunkingWrapper
 from serl_launcher.utils.train_utils import concat_batches
+
 
 from agentlace.trainer import TrainerServer, TrainerClient
 from agentlace.data.data_store import QueuedDataStore
@@ -28,7 +31,7 @@ from serl_launcher.utils.launcher import (
 )
 from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
-from franka_env.envs.relative_env import RelativeFrame
+
 from franka_env.envs.wrappers import (
     GripperCloseEnv,
     SpacemouseIntervention,
@@ -314,7 +317,9 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
 
 
 def main(_):
-    assert FLAGS.batch_size % num_devices == 0
+    batch_size= 256 
+    print("\n\nentered")
+    assert batch_size % num_devices == 0
     # seed
     rng = jax.random.PRNGKey(FLAGS.seed)
 
@@ -333,6 +338,8 @@ def main(_):
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
     env = RecordEpisodeStatistics(env)
 
+    print("Keys")
+    print(env.observation_space.keys())
     image_keys = [key for key in env.observation_space.keys() if key != "state"]
 
     rng, sampling_rng = jax.random.split(rng)
@@ -369,6 +376,7 @@ def main(_):
         with open(FLAGS.demo_path, "rb") as f:
             trajs = pkl.load(f)
             for traj in trajs:
+    
                 demo_buffer.insert(traj)
         print(f"demo buffer size: {len(demo_buffer)}")
 

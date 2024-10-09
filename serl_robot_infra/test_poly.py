@@ -3,11 +3,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import time
-from polymetis.gripper_interface import GripperInterface
+
+from polymetis import GripperInterface
 import torch
 
 from polymetis import RobotInterface
 from torchcontrol.modules.feedforward import Coriolis
+from  torchcontrol.transform.rotation import RotationObj
+
+
+
 #from polymetis import Gripperinterface
 
 reset_joint_target =  torch.tensor([-0.1568,  0.6025,  0.0381, -1.5723,  0.0052,  2.1417,  0.5684])
@@ -15,21 +20,23 @@ reset_joint_target =  torch.tensor([-0.1568,  0.6025,  0.0381, -1.5723,  0.0052,
 if __name__ == "__main__":
     # Initialize robot interface
     robot = RobotInterface(
-        ip_address= "10.10.10.210",
-        port = 50051,
+        ip_address= "141.3.53.63",
+        port = 50052,
 
     )
     gripper = GripperInterface (
-        ip_address = "10.10.10.210",
-        port = 50052
-    )
+        ip_address = "141.3.53.63",
+        port = 50051
+    ) 
+   
     # Reset
     robot.set_home_pose(reset_joint_target)
-    robot.go_home()
-    pos,ori = robot.get_ee_pose()
-    # Get joint positions
-    positions = robot.get_ee_pose()
-    print(f"Current positions: {positions}")
+    robot.go_home()  # Get joint positions
+    pos, ori  = robot.get_joint_positions()
+    ori = RotationObj(ori)
+    rot = ori.as_rotvec()
+    pos = torch.concat ((pos, rot))
+    print(f"Current positions: {pos}")
     time.sleep(5)
     # Command robot to pose (move 4th and 6th joint)
     joint_positions_desired = torch.tensor(
@@ -42,7 +49,7 @@ if __name__ == "__main__":
     # Get updated joint positions
     state = robot.get_joint_positions()
     corioles= Coriolis(robot.robot_model)
-    test_output= robot.get_robot_state()
+    test_output= robot.get_ee_pose
     
 
     print(f"testresult: {test_output}")

@@ -21,8 +21,8 @@ from serl_launcher.wrappers.chunking import ChunkingWrapper
 
 if __name__ == "__main__":
     env = gym.make("FrankaPegInsert-Vision-v0")
-    env = GripperCloseEnv(env)
-    env = SpacemouseIntervention(env)
+    env = GripperCloseEnv(env)  #  includes gripper to action"""
+    env = SpacemouseIntervention(env)  # not replicated changes in reward
     env = RelativeFrame(env)
     env = Quat2EulerWrapper(env)
     env = SERLObsWrapper(env)

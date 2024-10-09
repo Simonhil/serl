@@ -5,8 +5,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(polymetis)
 
+
 set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 
 add_library(protobuf::libprotobuf UNKNOWN IMPORTED)
 set_target_properties(protobuf::libprotobuf PROPERTIES
@@ -95,7 +97,12 @@ add_library(
 target_link_libraries(generated_grpc_protos
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
+    ${_Protobuf_LIBRARY_DEBUG}
     ${_PROTOBUF_LIBPROTOBUF}
+    
+    
+    
+   
 )
 
 include_directories(
@@ -106,6 +113,7 @@ include_directories(
     ${pinocchio_INCLUDE_DIRS}
     "${CMAKE_CURRENT_SOURCE_DIR}/torch_isolation/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/torch_isolation/pinocchio_isolation/include"
+    
 )
 
 # Add server

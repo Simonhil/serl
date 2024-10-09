@@ -16,7 +16,8 @@ class FrankaBinRelocation(FrankaEnv):
         super().__init__(**kwargs, config=BinEnvConfig)
         self.observation_space["images"] = gym.spaces.Dict(
             {
-                "wrist_1": gym.spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
+                "top": gym.spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
+                "side": gym.spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
                 "front": gym.spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
             }
         )
@@ -81,11 +82,14 @@ class FrankaBinRelocation(FrankaEnv):
 
     def crop_image(self, name, image):
         """Crop realsense images to be a square."""
-        if name == "wrist_1":
+        if name == "side":
             return image[:, 80:560, :]
         elif name == "front":
-            # return image[:, 80:560, :]
-            return image
+            return image[:, 80:560, :]
+        
+        elif name == "top":
+            return image[:, 80:560, :]
+ 
         else:
             return ValueError(f"Camera {name} not recognized in cropping")
 
@@ -109,7 +113,7 @@ class FrankaBinRelocation(FrankaEnv):
                 input(
                     f"{key} camera frozen. Check connect, then press enter to relaunch..."
                 )
-                self.init_cameras(self.config.REALSENSE_CAMERAS)
+                self.init_cameras(self.config.CAMERAS)
                 return self.get_im()
 
         self.recording_frames.append(

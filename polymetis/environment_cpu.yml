@@ -19,11 +19,11 @@ dependencies:
     - libprotobuf=3.18.1
     - mkl-include ==2022.0.1
     - openmpi=2.1.2
-    - pinocchio ==2.5.2
+    - pinocchio ==3.2.0
     - poco ==1.9.0 # needed by libfranka
     - python ==3.9
     - pytorch=2.0.1
-    - torchvision
+    - torchvisionf
     - urdfdom=2.3.3=hc9558a2_0
     - urdfdom_headers=1.0.5=hc9558a2_2
     - yaml-cpp ==0.6.3
@@ -31,8 +31,8 @@ dependencies:
     # Run dependencies
     - asv
     - black
-    - boost ==1.72.0
-    - boost-cpp ==1.72.0
+    - boost ==1.78.0
+    - boost-cpp ==1.78.0
     - breathe
     - dash
     - grpcio ==1.46.0
@@ -40,7 +40,7 @@ dependencies:
     - hydra-core ==1.0.6
     - importlib-resources ==5.7.1
     - myst-parser
-    - numpy
+    - numpy==1.24.3
     - pandas
     - plotly
     - pip
@@ -50,9 +50,9 @@ dependencies:
     - pyserial
     - pytest
     - pytest-benchmark=4.0.0
-    - scipy
+    - scipy <= 1.12.0
     - spdlog=1.10.0=h924138e_0
     - sphinx
     - sphinx-copybutton
     - sphinx-book-theme
-    - tqdm
+    - tqdm >= 4.60.0

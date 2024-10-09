@@ -6,7 +6,7 @@ class BinEnvConfig(DefaultEnvConfig):
     """Set the configuration for FrankaEnv."""
 
     SERVER_URL: str = "http://127.0.0.1:5000/"
-    REALSENSE_CAMERAS = {
+    CAMERAS = {
         "wrist_1": "130322274175",
         "front": "128422272758",
     }

@@ -4,9 +4,10 @@ import time
 
 
 class VideoCapture:
-    def __init__(self, cap, name=None):
+    def __init__(self, cap,type, name=None):
         if name is None:
             name = cap.name
+        self.type=type
         self.name = name
         self.q = queue.Queue()
         self.cap = cap
@@ -20,7 +21,11 @@ class VideoCapture:
     def _reader(self):
         while self.enable:
             time.sleep(0.01)
-            ret, frame = self.cap.read()
+            if type == "oak-d":
+                frame = self.cap._get_sensors()
+                ret = True
+            else:
+                ret, frame = self.cap.read()
             if not ret:
                 break
             if not self.q.empty():

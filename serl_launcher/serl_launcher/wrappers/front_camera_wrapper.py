@@ -17,7 +17,7 @@ class FrontCameraWrapper(gym.ObservationWrapper):
     def observation(self, observation):
         # cache a copy of observation with only the front camera image
         new_obs = deepcopy(observation)
-        new_obs.pop("wrist_1")
+        new_obs.pop("top")
         self.front_obs = new_obs
 
         return observation

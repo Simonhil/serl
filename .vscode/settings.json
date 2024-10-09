@@ -3,10 +3,14 @@
         "./serl_robot_infra/robot_server/config",
         "./serl_robot_infra/robot_server/helper",
         "./serl_robot_infra/franka_env/envs",
+        "./serl_robot_infra/franka_env/",
         "./serl_robot_infra/franka_env/envs/test_env",
         "./serl_robot_infra",
         "./serl_launcher",
         "./serl_launcher/serl_launcher/wrappers/dmc",
-        "./serl_launcher/serl_launcher/wrappers/dmc"
+        "./serl_launcher/serl_launcher/wrappers/dmc",
+        "./polymetis",
+        "./polymetis/python",
+        "./serl_robot_infra/franka_env/camera"
     ]
 }

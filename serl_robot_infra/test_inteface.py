@@ -22,7 +22,7 @@ from robot_servers.polymetis_interface import RpMainInterface
 
 
 
-ip="10.10.10.210"
+ip="141.3.53.63"
 rb_port =  50051
 g_port = 50052
 reset_joint_target =  torch.tensor([-0.1400, -0.0200,  0.0500, -1.5700,  0.0500,  1.5000, -0.9100])

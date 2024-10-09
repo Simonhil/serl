@@ -12,10 +12,11 @@ from datetime import datetime
 from collections import OrderedDict
 from typing import Dict
 
+from franka_env.camera.hardware_depthai import DepthAI
 from franka_env.camera.video_capture import VideoCapture
 from franka_env.camera.rs_capture import RSCapture
 from franka_env.utils.rotations import euler_2_quat, quat_2_euler
-from serl_robot_infra.robot_servers.polymetis_interface import RpMainInterface
+from robot_servers.polymetis_interface import RpMainInterface
 
 
 class ImageDisplayer(threading.Thread):
@@ -45,7 +46,7 @@ class DefaultEnvConfig:
     """Default configuration for FrankaEnv. Fill in the values below."""
 
     SERVER_URL: str = "http://127.0.0.1:5000/"
-    REALSENSE_CAMERAS: Dict = {
+    CAMERAS: Dict = {
         "wrist_1": "130322274175",
         "wrist_2": "127122270572",
     }
@@ -127,7 +128,7 @@ class FrankaEnv(gym.Env):
             np.ones((7,), dtype=np.float32) * -1,
             np.ones((7,), dtype=np.float32),
         )
-
+        
         self.observation_space = gym.spaces.Dict(
             {
                 "state": gym.spaces.Dict(
@@ -143,10 +144,13 @@ class FrankaEnv(gym.Env):
                 ),
                 "images": gym.spaces.Dict(
                     {
-                        "wrist_1": gym.spaces.Box(
+                        "top": gym.spaces.Box(
                             0, 255, shape=(128, 128, 3), dtype=np.uint8
                         ),
-                        "wrist_2": gym.spaces.Box(
+                        "side": gym.spaces.Box(
+                            0, 255, shape=(128, 128, 3), dtype=np.uint8
+                        ),
+                        "front": gym.spaces.Box(
                             0, 255, shape=(128, 128, 3), dtype=np.uint8
                         ),
                     }
@@ -159,7 +163,7 @@ class FrankaEnv(gym.Env):
             return
 
         self.cap = None
-        self.init_cameras(config.REALSENSE_CAMERAS)
+        self.init_cameras(config.CAMERAS)
         self.img_queue = queue.Queue()
         self.displayer = ImageDisplayer(self.img_queue)
         self.displayer.start()
@@ -168,7 +172,7 @@ class FrankaEnv(gym.Env):
 
         #interface aiming to replace the robot_server 
         self.server_interface =  RpMainInterface(config.robot_ip, config.port, config.gripper_ip, config.gripper_port, config.gripper_type, config.reset_joint_target , config.position_d_,
-                 config.target_pos, config.target_or, config.orientation_d_ 
+                 config.TARGET_POSE, config.target_or, config.orientation_d_ 
                  )
 
     def clip_safety_box(self, pose: np.ndarray) -> np.ndarray:
@@ -246,9 +250,11 @@ class FrankaEnv(gym.Env):
 
     def crop_image(self, name, image) -> np.ndarray:
         """Crop realsense images to be a square."""
-        if name == "wrist_1":
+        if name == "top":
             return image[:, 80:560, :]
-        elif name == "wrist_2":
+        elif name == "side":
+            return image[:, 80:560, :]
+        elif name == "front":
             return image[:, 80:560, :]
         else:
             return ValueError(f"Camera {name} not recognized in cropping")
@@ -272,7 +278,7 @@ class FrankaEnv(gym.Env):
                     f"{key} camera frozen. Check connect, then press enter to relaunch..."
                 )
                 cap.close()
-                self.init_cameras(self.config.REALSENSE_CAMERAS)
+                self.init_cameras(self.config.CAMERAS)
                 return self.get_im()
 
         self.recording_frames.append(
@@ -385,10 +391,14 @@ class FrankaEnv(gym.Env):
             self.close_cameras()
 
         self.cap = OrderedDict()
-        for cam_name, cam_serial in name_serial_dict.items():
-            cap = VideoCapture(
-                RSCapture(name=cam_name, serial_number=cam_serial, depth=False)
-            )
+        for cam_name, cam_specifications in name_serial_dict.items():
+            if cam_specifications["type"] == "oak-d" :
+                cam_serial = cam_specifications["serial_number"]
+                cap = VideoCapture(
+                   DepthAI( device_id= cam_serial, name=cam_name), "oak-d"
+                )
+            else: 
+                raise NotImplementedError
             self.cap[cam_name] = cap
 
     def close_cameras(self):
