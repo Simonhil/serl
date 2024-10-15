@@ -161,6 +161,7 @@ class JaxRLTrainState(struct.PyTreeNode):
         updates_acc = jax.tree_map(
             lambda *xs: jnp.sum(jnp.array(xs), axis=0), *updates_flat
         )
+  
         new_params = optax.apply_updates(self.params, updates_acc)
 
         return self.replace(
@@ -198,14 +199,14 @@ class JaxRLTrainState(struct.PyTreeNode):
         treedef = jax.tree_util.tree_structure(loss_fns)
         new_rng, *rngs = jax.random.split(self.rng, treedef.num_leaves + 1)
         rngs = jax.tree_util.tree_unflatten(treedef, rngs)
-
+        print("common.py after tree creation")
         # compute gradients
         grads_and_aux = jax.tree_map(
             lambda loss_fn, rng: jax.grad(loss_fn, has_aux=has_aux)(self.params, rng),
             loss_fns,
             rngs,
         )
-
+        print("common.py after grad compution")
         # update rng state
         self = self.replace(rng=new_rng)
 

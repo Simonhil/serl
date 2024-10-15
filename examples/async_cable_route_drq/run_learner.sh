@@ -8,7 +8,6 @@ python async_drq_randomized.py "$@" \
     --random_steps 600 \
     --training_starts 200 \
     --critic_actor_ratio 4 \
-    --batch_size 256 \
     --eval_period 2000 \
     --encoder_type resnet-pretrained \
     --demo_path cable_route_20_demos_2024-01-04_12-10-54.pkl \

@@ -1,6 +1,10 @@
 import numpy as np
+from torch import tensor
 from franka_env.envs.franka_env import DefaultEnvConfig
-
+"""   "top": {
+        "serial_number": "14442C10113FE2D200",
+        "type": "oak-d" 
+       }, """
 
 class PegEnvConfig(DefaultEnvConfig):
     """Set the configuration for FrankaEnv."""
@@ -8,15 +12,12 @@ class PegEnvConfig(DefaultEnvConfig):
     SERVER_URL: str = "http://127.0.0.1:5000/"
     CAMERAS = {
        "front": {
-        "serial_number": "130322274175",
+        "serial_number": "1844301051D9B50F00",
         "type": "oak-d" 
        },
-        "top": {
-        "serial_number": "130322274175",
-        "type": "oak-d" 
-       },
+      
         "side": {
-        "serial_number": "130322274175",
+        "serial_number": "14442C10113FE2D200",
         "type": "oak-d" 
        }
    
@@ -26,7 +27,7 @@ class PegEnvConfig(DefaultEnvConfig):
            [ 0.6851, -0.0837,  0.2863, -2.9307,  1.0382,  0.0426]
         
     )
-
+    """ + np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0]) """
     RESET_POSE = TARGET_POSE + np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0])
     REWARD_THRESHOLD: np.ndarray = np.array([0.01, 0.01, 0.01, 0.2, 0.2, 0.2])
     APPLY_GRIPPER_PENALTY = False
@@ -96,9 +97,9 @@ class PegEnvConfig(DefaultEnvConfig):
     }
 
     ROBOT_IP="141.3.53.63"
-    ROBOT_PORT = 50043
+    ROBOT_PORT = 50053
     GRIPPER_PORT= 50054
     GRIPPER_TYPE= "Franka"
-    """ RESET_JOINT_TARGET= """
+    RESET_JOINT_TARGET= tensor([-0.1400, -0.0200,  0.0500, -1.5700,  0.0500,  1.5000, -0.9100])
    
 

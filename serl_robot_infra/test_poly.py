@@ -21,21 +21,21 @@ if __name__ == "__main__":
     # Initialize robot interface
     robot = RobotInterface(
         ip_address= "141.3.53.63",
-        port = 50052,
+        port = 50051,
 
     )
     gripper = GripperInterface (
         ip_address = "141.3.53.63",
-        port = 50051
+        port = 50052
     ) 
-   
+       
     # Reset
     robot.set_home_pose(reset_joint_target)
     robot.go_home()  # Get joint positions
-    pos, ori  = robot.get_joint_positions()
-    ori = RotationObj(ori)
+    pos  = robot.get_joint_positions()
+    """   ori = RotationObj(ori)
     rot = ori.as_rotvec()
-    pos = torch.concat ((pos, rot))
+    pos = torch.concat ((pos, rot)) """
     print(f"Current positions: {pos}")
     time.sleep(5)
     # Command robot to pose (move 4th and 6th joint)
@@ -57,14 +57,14 @@ if __name__ == "__main__":
     
     speed = 0.3
     force = 130
-    gripper.goto( 0.02, speed, force)
+    """   gripper.goto( 0.02, speed, force)
 
-    time.sleep(1)
-    gripper.goto(0.7, speed, force)
+        time.sleep(1)
+        gripper.goto(0.7, speed, force)
 
-    time.sleep(3)
+        time.sleep(3)
 
-
+    """
     print("complete")
     #robot.go_home()
     #test gripper

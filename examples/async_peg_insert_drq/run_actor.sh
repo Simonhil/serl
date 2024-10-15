@@ -1,5 +1,5 @@
 export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
-export XLA_PYTHON_CLIENT_MEM_FRACTION=.1 && \
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.2 && \
 python async_drq_randomized.py "$@" \
     --actor \
     --render \
@@ -9,4 +9,4 @@ python async_drq_randomized.py "$@" \
     --random_steps 0 \
     --training_starts 200 \
     --encoder_type resnet-pretrained \
-    --demo_path /home/shilber/delete/peg_insert__demos_2024-10-02_14-48-44.pkl \
+    --demo_path /home/shilber/delete/peg_insert__demos_2024-10-11_11-53-46.pkl\

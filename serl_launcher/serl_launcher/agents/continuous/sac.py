@@ -138,14 +138,15 @@ class SACAgent(flax.struct.PyTreeNode):
         next_actions, next_actions_log_probs = self._compute_next_actions(
             batch, next_action_sample_key
         )
-
+        print("sac.py critic_loss_fn after compute_next_action")
         # Evaluate next Qs for all ensemble members (cheap because we're only doing the forward pass)
         target_next_qs = self.forward_target_critic(
             batch["next_observations"],
             next_actions,
             rng=rng,
         )  # (critic_ensemble_size, batch_size)
-
+        
+        print("sac.py critic_loss_fn after forward target critic")
         # Subsample if requested
         if self.config["critic_subsample_size"] is not None:
             rng, subsample_key = jax.random.split(rng)
@@ -166,7 +167,6 @@ class SACAgent(flax.struct.PyTreeNode):
             + self.config["discount"] * batch["masks"] * target_next_min_q
         )
         chex.assert_shape(target_q, (batch_size,))
-
         if self.config["backup_entropy"]:
             temperature = self.forward_temperature()
             target_q = target_q - temperature * next_actions_log_probs
@@ -174,7 +174,6 @@ class SACAgent(flax.struct.PyTreeNode):
         predicted_qs = self.forward_critic(
             batch["observations"], batch["actions"], rng=rng, grad_params=params
         )
-
         chex.assert_shape(
             predicted_qs, (self.config["critic_ensemble_size"], batch_size)
         )
@@ -187,7 +186,7 @@ class SACAgent(flax.struct.PyTreeNode):
             "predicted_qs": jnp.mean(predicted_qs),
             "target_qs": jnp.mean(target_qs),
         }
-
+        print("sac.py after critic_loss_fn")
         return critic_loss, info
 
     def policy_loss_fn(self, batch, params: Params, rng: PRNGKey):
@@ -217,7 +216,7 @@ class SACAgent(flax.struct.PyTreeNode):
             "temperature": temperature,
             "entropy": -log_probs.mean(),
         }
-
+    
         return actor_loss, info
 
     def temperature_loss_fn(self, batch, params: Params, rng: PRNGKey):
@@ -231,6 +230,7 @@ class SACAgent(flax.struct.PyTreeNode):
             entropy,
             grad_params=params,
         )
+      
         return temperature_loss, {"temperature_loss": temperature_loss}
 
     def loss_fns(self, batch):
@@ -276,10 +276,11 @@ class SACAgent(flax.struct.PyTreeNode):
         for key in loss_fns.keys() - networks_to_update:
             loss_fns[key] = lambda params, rng: (0.0, {})
 
+        print("sac.py before los fns")
         new_state, info = self.state.apply_loss_fns(
             loss_fns, pmap_axis=pmap_axis, has_aux=True
         )
-
+        print("sac.py after los fns")
         # Update target network (if requested)
         if "critic" in networks_to_update:
             new_state = new_state.target_update(self.config["soft_target_update_rate"])
@@ -287,7 +288,6 @@ class SACAgent(flax.struct.PyTreeNode):
         # Update RNG
         rng, _ = jax.random.split(self.state.rng)
         new_state = new_state.replace(rng=rng)
-
         # Log learning rates
         for name, opt_state in new_state.opt_states.items():
             if (
@@ -311,7 +311,6 @@ class SACAgent(flax.struct.PyTreeNode):
         Sample actions from the policy network, **using an external RNG** (or approximating the argmax by the mode).
         The internal RNG will not be updated.
         """
-
         dist = self.forward_policy(observations, rng=seed, train=False)
         if argmax:
             assert seed is None, "Cannot specify seed when sampling deterministically"

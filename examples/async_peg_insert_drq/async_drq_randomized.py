@@ -5,12 +5,13 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 import numpy as np
-from tqdm import tqdm
+
 from absl import app, flags
 from flax.training import checkpoints
 
 import gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
+import tqdm
 
 
 from franka_env.envs.relative_env import RelativeFrame
@@ -117,7 +118,6 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
                     argmax=True,
                 )
                 actions = np.asarray(jax.device_get(actions))
-
                 next_obs, reward, done, truncated, info = env.step(actions)
                 obs = next_obs
 
@@ -130,7 +130,6 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
                     success_counter += reward
                     print(reward)
                     print(f"{success_counter}/{episode + 1}")
-
         print(f"success rate: {success_counter / FLAGS.eval_n_trajs}")
         print(f"average time: {np.mean(time_list)}")
         return  # after done eval, return and exit
@@ -149,7 +148,6 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         agent = agent.replace(state=agent.state.replace(params=params))
 
     client.recv_network_callback(update_params)
-
     obs, _ = env.reset()
     done = False
 
@@ -159,17 +157,19 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
 
     for step in tqdm.tqdm(range(FLAGS.max_steps), dynamic_ncols=True):
         timer.tick("total")
-
         with timer.context("sample_actions"):
             if step < FLAGS.random_steps:
                 actions = env.action_space.sample()
             else:
                 sampling_rng, key = jax.random.split(sampling_rng)
+                
                 actions = agent.sample_actions(
                     observations=jax.device_put(obs),
                     seed=key,
                     deterministic=False,
                 )
+                print("\n\n\ sampled action")
+                print(actions)
                 actions = np.asarray(jax.device_get(actions))
 
         # Step environment
@@ -214,6 +214,9 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
 
 
 def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
+    batch_size= 32
+  
+    assert batch_size % num_devices == 0
     """
     The learner loop, which runs when "--learner" is set to True.
     """
@@ -260,14 +263,14 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
     # 50/50 sampling from RLPD, half from demo and half from online experience
     replay_iterator = replay_buffer.get_iterator(
         sample_args={
-            "batch_size": FLAGS.batch_size // 2,
+            "batch_size": batch_size // 2,
             "pack_obs_and_next_obs": True,
         },
         device=sharding.replicate(),
     )
     demo_iterator = demo_buffer.get_iterator(
         sample_args={
-            "batch_size": FLAGS.batch_size // 2,
+            "batch_size": batch_size // 2,
             "pack_obs_and_next_obs": True,
         },
         device=sharding.replicate(),
@@ -281,19 +284,22 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
         for critic_step in range(FLAGS.critic_actor_ratio - 1):
             with timer.context("sample_replay_buffer"):
                 batch = next(replay_iterator)
-                demo_batch = next(demo_iterator)
+            """          demo_batch = next(demo_iterator)
                 batch = concat_batches(batch, demo_batch, axis=0)
-
+            """
             with timer.context("train_critics"):
                 agent, critics_info = agent.update_critics(
                     batch,
                 )
-
         with timer.context("train"):
+
             batch = next(replay_iterator)
             demo_batch = next(demo_iterator)
             batch = concat_batches(batch, demo_batch, axis=0)
             agent, update_info = agent.update_high_utd(batch, utd_ratio=1)
+
+           
+
 
         # publish the updated network
         if step > 0 and step % (FLAGS.steps_per_update) == 0:
@@ -317,9 +323,7 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
 
 
 def main(_):
-    batch_size= 256 
-    print("\n\nentered")
-    assert batch_size % num_devices == 0
+   
     # seed
     rng = jax.random.PRNGKey(FLAGS.seed)
 
@@ -331,7 +335,7 @@ def main(_):
     )
     env = GripperCloseEnv(env)
     if FLAGS.actor:
-        env = SpacemouseIntervention(env)
+       """  env = SpacemouseIntervention(env) """
     env = RelativeFrame(env)
     env = Quat2EulerWrapper(env)
     env = SERLObsWrapper(env)

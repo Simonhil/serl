@@ -77,7 +77,7 @@ class RepFrankaGripperServer:
     #     """internal callback to get the latest gripper position."""
     #     self.gripper_pos = np.sum(msg.position)
     def get_pos(self):
-        return self.gripper.get_state()
+        return self.gripper.get_state().width
 
 
 
@@ -158,7 +158,7 @@ class RepFrankaServer:
 
 
 
-    def start_impedance(self, ):
+    def start_impedance(self):
         """Launches the impedance controller"""
         
         pos ,ori = self.robot.get_ee_pose()
@@ -385,6 +385,7 @@ class RepFrankaServer:
         #Pose is represented as a 4x4 matrix in column-major format. 
         state = self.robot.get_robot_state()
         self.pos, self.orientation = self.robot.get_ee_pose()
+        self.pos = torch.concat((self.pos, self.orientation))
         self.dq = torch.Tensor(state.joint_velocities) #joint velocity
         self.q = torch.Tensor(state.joint_positions)# joint angles
         
@@ -428,10 +429,7 @@ class RepFrankaServer:
 class RpMainInterface:
 
     def __init__(self,ip, port, gripper_port, gripper_type, reset_joint_target : torch.Tensor,
-                 target_pos, target_or, 
                  ): 
-        self.target_pos = target_pos
-        self.targget_or = target_or
         self.robot = RepFrankaServer(ip, port, reset_joint_target)
 
 
@@ -507,7 +505,8 @@ class RpMainInterface:
     # Route for getting gripper distance
     def get_gripper(self):
         # return jsonify({"gripper": gripper_server.gripper_pos})
-        self.gripper.get_pos()
+        return self.gripper.get_pos()
+
 
 
 
@@ -565,7 +564,7 @@ class RpMainInterface:
 
     # # Route for Clearing Errors (Communcation constraints, etc.)
    
-    def clear():
+    def clear(self):
         # robot_server.clear()
         # return "Clear"
         pass
@@ -584,13 +583,13 @@ class RpMainInterface:
         self.robot._set_currpos()
         return (
             {
-                "pose": self.robot.pos,
-                "vel": self.robot.vel,
-                "force": self.robot.force,
-                "torque": self.robot.torque,
-                "q": self.robot.q,
-                "dq": self.robot.dq,
-                "jacobian": self.robot.jacobian,
+                "pose": self.robot.pos.tolist(),
+                "vel": self.robot.vel.tolist(),
+                "force": self.robot.force.tolist(),
+                "torque": self.robot.torque.tolist(),
+                "q": self.robot.q.tolist(),
+                "dq": self.robot.dq.tolist(),
+                "jacobian": self.robot.jacobian.tolist(),
                 "gripper_pos":self.gripper.get_pos(),
             }
         )

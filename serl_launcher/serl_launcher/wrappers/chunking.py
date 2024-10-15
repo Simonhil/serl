@@ -65,7 +65,7 @@ class ChunkingWrapper(gym.Wrapper):
             act_exec_horizon = 1
 
         assert len(action) >= act_exec_horizon
-
+        
         for i in range(act_exec_horizon):
             obs, reward, done, trunc, info = self.env.step(action[i], *args)
             self.current_obs.append(obs)

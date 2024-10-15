@@ -91,6 +91,7 @@ class FrankaEnv(gym.Env):
         )
 
         self.currpos = self.resetpos.copy()
+        
         self.currvel = np.zeros((6,))
         self.q = np.zeros((7,))
         self.dq = np.zeros((7,))
@@ -128,7 +129,9 @@ class FrankaEnv(gym.Env):
             np.ones((7,), dtype=np.float32) * -1,
             np.ones((7,), dtype=np.float32),
         )
-        
+        """  "top": gym.spaces.Box(
+                            0, 255, shape=(128, 128, 3), dtype=np.uint8
+                        ), """
         self.observation_space = gym.spaces.Dict(
             {
                 "state": gym.spaces.Dict(
@@ -144,9 +147,7 @@ class FrankaEnv(gym.Env):
                 ),
                 "images": gym.spaces.Dict(
                     {
-                        "top": gym.spaces.Box(
-                            0, 255, shape=(128, 128, 3), dtype=np.uint8
-                        ),
+                       
                         "side": gym.spaces.Box(
                             0, 255, shape=(128, 128, 3), dtype=np.uint8
                         ),
@@ -171,8 +172,8 @@ class FrankaEnv(gym.Env):
 
 
         #interface aiming to replace the robot_server 
-        self.server_interface =  RpMainInterface(config.robot_ip, config.port, config.gripper_ip, config.gripper_port, config.gripper_type, config.reset_joint_target , config.position_d_,
-                 config.TARGET_POSE, config.target_or, config.orientation_d_ 
+        self.server_interface =  RpMainInterface(config.ROBOT_IP, config. ROBOT_PORT, config. GRIPPER_PORT, 
+                                                 config.GRIPPER_TYPE, config.RESET_JOINT_TARGET
                  )
 
     def clip_safety_box(self, pose: np.ndarray) -> np.ndarray:
@@ -208,11 +209,19 @@ class FrankaEnv(gym.Env):
         self.nextpos = self.currpos.copy()
         self.nextpos[:3] = self.nextpos[:3] + xyz_delta * self.action_scale[0]
 
-        # GET ORIENTATION FROM ACTION
-        self.nextpos[3:] = (
+      
+
+        try:
+            self.nextpos[3:] = (
             Rotation.from_euler("xyz", action[3:6] * self.action_scale[1])
             * Rotation.from_quat(self.currpos[3:])
-        ).as_quat()
+            ).as_quat()
+        except: 
+             self.nextpos[3:] = (Rotation.from_quat(self.currpos[3:])).as_quat()
+
+      
+
+        
 
         gripper_action = action[6] * self.action_scale[2]
 
@@ -226,6 +235,7 @@ class FrankaEnv(gym.Env):
         self._update_currpos()
         ob = self._get_obs()
         reward = self.compute_reward(ob, gripper_action_effective)
+
         done = self.curr_path_length >= self.max_episode_length or reward == 1
         return ob, reward, done, False, {}
 
@@ -265,14 +275,21 @@ class FrankaEnv(gym.Env):
         display_images = {}
         for key, cap in self.cap.items():
             try:
-                rgb = cap.read()
+                """  rgb = cap.read()
                 cropped_rgb = self.crop_image(key, rgb)
                 resized = cv2.resize(
                     cropped_rgb, self.observation_space["images"][key].shape[:2][::-1]
                 )
                 images[key] = resized[..., ::-1]
                 display_images[key] = resized
-                display_images[key + "_full"] = cropped_rgb
+                display_images[key + "_full"] = cropped_rgb """
+                rgb = cap.read()
+                resized = cv2.resize(
+                    rgb, self.observation_space["images"][key].shape[:2][::-1]
+                )
+                images[key] = resized[..., ::-1]
+                display_images[key] = resized
+                display_images[key + "_full"] = rgb
             except queue.Empty:
                 input(
                     f"{key} camera frozen. Check connect, then press enter to relaunch..."
@@ -366,7 +383,6 @@ class FrankaEnv(gym.Env):
 
         self._update_currpos()
         obs = self._get_obs()
-
         return obs, {}
 
     def save_video_recording(self):

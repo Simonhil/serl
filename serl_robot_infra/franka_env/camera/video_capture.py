@@ -14,6 +14,10 @@ class VideoCapture:
         self.t = threading.Thread(target=self._reader)
         self.t.daemon = True
         self.enable = True
+        if self.type == "oak-d":
+            cap.connect()
+        else:
+            raise NotImplementedError
         self.t.start()
 
         # read frames as soon as they are available, keeping only most recent one
@@ -21,7 +25,7 @@ class VideoCapture:
     def _reader(self):
         while self.enable:
             time.sleep(0.01)
-            if type == "oak-d":
+            if self.type == "oak-d":
                 frame = self.cap._get_sensors()
                 ret = True
             else:

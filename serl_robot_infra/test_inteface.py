@@ -7,7 +7,7 @@ from torchcontrol.modules.feedforward import Coriolis
 
 from robot_servers.polymetis_interface import RpMainInterface
 
-
+from scipy.spatial.transform import Rotation
 
 
 
@@ -33,20 +33,21 @@ target_or = torch.tensor([ 0.9416, -0.3357, -0.0228, -0.0138])
 
 if __name__ == "__main__":
     # Initialize robot interface
-    robot = RpMainInterface(ip,rb_port,g_port,"Franka", reset_joint_target, position_d_, target_pos, target_or, orientation_d_)
+    robot = RpMainInterface(ip,rb_port,g_port,"Franka", reset_joint_target,)
     
     # Reset
     #robot.go_home()
 
     # Get joint positions
     print("innitialised")
-    time.sleep(10)
     #robot.joint_reset()
-    positions = robot.get_pos()
+    positions = robot.get_gripper()
     robot.joint_reset()
     print(f"Current ositions: {positions}")
+    currpos = [ 0.670111 ,  -0.02576363 , 0.27626044 , 0.80817068 ,-0.1846139 , -0.53024435,-0.17781684]
+    nextpos =  Rotation.from_quat(currpos[3:])
     # Command robot to pose (move 4th and 6th joint)
-    joint_positions_desired = torch.Tensor(
+    """ joint_positions_desired = torch.Tensor(
         [-0.14, -0.02, -0.05, -1.57, 0.05, 1.50, -0.91]
     )
     #robot.joint_reset()
@@ -69,6 +70,6 @@ if __name__ == "__main__":
 
     print(f"testresult: {test_output}")
   
-    
+     """
     #robot.joint_reset()
     robot.stop_impedance()

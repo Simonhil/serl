@@ -314,9 +314,12 @@ class DrQAgent(SACAgent):
                 "next_observations": next_obs,
             }
         )
-
+       
         new_state = self.state.replace(rng=rng)
+     
         new_agent = self.replace(state=new_state)
+
+       
         new_agent, critic_infos = new_agent.update(
             batch,
             pmap_axis=pmap_axis,

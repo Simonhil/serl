@@ -106,6 +106,7 @@ class DepthAI(DiscreteCamera):
         super().__init__(device_id, name if name else f"DepthAI_{device_id}", height, width)
 
         self.timeout = 1 # in seconds
+       
 
     def _connect(self):
         self.thread = DAIThread(self.device_id)
@@ -126,7 +127,7 @@ class DepthAI(DiscreteCamera):
         - `sensor_data` (dict): Sensor data in the format `{'time': float, 'rgb': Any}`. 
         """
 
-        # get all data from all topics
+         # get all data from all topics
         self.thread.updateImg()
         last_img = copy.deepcopy(self.thread.frame)
         #last_depth = copy.deepcopy(self.thread.depthFrame) # why was this also self.thread.frame ??
@@ -135,8 +136,9 @@ class DepthAI(DiscreteCamera):
             last_img = copy.deepcopy(self.thread.frame)
             #last_depth = copy.deepcopy(self.thread.depthFrame)
             time.sleep(0.1)
-        return {'time':self.thread.timestamp, 'rgb': last_img}
-
+            """ {'time':self.thread.timestamp, 'rgb': last_img} """
+        return last_img
+    
     def apply_commands(self):
         return 0
 
