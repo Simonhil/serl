@@ -1,5 +1,5 @@
 import torch
-
+from scipy.spatial.transform import Rotation as R
 
 
 
@@ -32,3 +32,19 @@ def saturate_torque_rate(tau_d_calculated, tau_J_d, delta_tau_max):
     clamped_difference = torch.clamp(difference, -delta_tau_max, delta_tau_max)
     tau_d_saturated = tau_J_d + clamped_difference
     return tau_d_saturated
+
+
+
+def euler_2_quat(euler):
+    """calculates and returns: yaw, pitch, roll from given quaternion"""
+
+    quat = R.from_euler("xyz", euler).as_quat()
+
+    if quat[0] <0:
+         quat= -1 * quat
+
+         
+    return quat
+def quat_2_euler(quat):
+    """calculates and returns: yaw, pitch, roll from given quaternion"""
+    return R.from_quat(quat).as_euler("xyz")

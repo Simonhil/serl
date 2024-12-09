@@ -35,7 +35,7 @@ class ImageDisplayer(threading.Thread):
                 [v for k, v in img_array.items() if "full" not in k], axis=0
             )
 
-            cv2.imshow("RealSense Cameras", frame)
+            cv2.imshow("Cameras", frame)
             cv2.waitKey(1)
 
 
@@ -145,14 +145,18 @@ class FrankaEnv(gym.Env):
                         "tcp_torque": gym.spaces.Box(-np.inf, np.inf, shape=(3,)),
                     }
                 ),
+                """ previous shape (128,128,3) """
                 "images": gym.spaces.Dict(
                     {
                        
                         "side": gym.spaces.Box(
-                            0, 255, shape=(128, 128, 3), dtype=np.uint8
+                            0, 255, shape=(256, 256, 3), dtype=np.uint8
                         ),
                         "front": gym.spaces.Box(
-                            0, 255, shape=(128, 128, 3), dtype=np.uint8
+                            0, 255, shape=(256, 256, 3), dtype=np.uint8
+                        ),
+                         "wrist": gym.spaces.Box(
+                            0, 255, shape=(256, 256, 3), dtype=np.uint8
                         ),
                     }
                 ),
@@ -173,7 +177,7 @@ class FrankaEnv(gym.Env):
 
         #interface aiming to replace the robot_server 
         self.server_interface =  RpMainInterface(config.ROBOT_IP, config. ROBOT_PORT, config. GRIPPER_PORT, 
-                                                 config.GRIPPER_TYPE, config.RESET_JOINT_TARGET
+                                                 config.GRIPPER_TYPE, config.RESET_JOINT_TARGET, self.config
                  )
 
     def clip_safety_box(self, pose: np.ndarray) -> np.ndarray:
@@ -284,6 +288,7 @@ class FrankaEnv(gym.Env):
                 display_images[key] = resized
                 display_images[key + "_full"] = cropped_rgb """
                 rgb = cap.read()
+                img = img[:, :, :]
                 resized = cv2.resize(
                     rgb, self.observation_space["images"][key].shape[:2][::-1]
                 )
@@ -350,10 +355,11 @@ class FrankaEnv(gym.Env):
                 -self.random_rz_range, self.random_rz_range
             )
             reset_pose[3:] = euler_2_quat(euler_random)
-            self.interpolate_move(reset_pose, timeout=1.5)
+            self.server_interface.pose(reset_pose)
+            """  self.interpolate_move(reset_pose, timeout=1.5) """
         else:
             reset_pose = self.resetpos.copy()
-            self.interpolate_move(reset_pose, timeout=1.5)
+            self.server_interface.joint_reset()
 
         # Change to compliance mode
         # requests.post(self.url + "update_param", json=self.config.COMPLIANCE_PARAM)
@@ -416,6 +422,7 @@ class FrankaEnv(gym.Env):
             else: 
                 raise NotImplementedError
             self.cap[cam_name] = cap
+
 
     def close_cameras(self):
         """Close both wrist cameras."""

@@ -99,7 +99,7 @@ class DiscreteDevice(RecordingDevice):
     Additionally, this class inherits from `RecordingDevice`, so its functionality is also included.
     """
 
-    def __init__(self, device_id: str, name: Optional[str] = None) -> None:
+    def __init__(self, device_id: str, name: Optional[str] = None, start_frame_latency: int = 0) -> None:
         """
         Instantiates a discrete device.
 
@@ -109,6 +109,8 @@ class DiscreteDevice(RecordingDevice):
         - `name` (Optional[str]): Name of the device. Default: "discrete_device_`device_id`"
         """
         super().__init__(device_id, name if name else f"discrete_device_{device_id}")
+        self.timestamps = []
+        self.start_frame_latency = start_frame_latency
 
     @abstractmethod
     def store_last_frame(self, directory: Path, filename: str):
@@ -167,7 +169,7 @@ class ContinuousDevice(RecordingDevice):
         pass
 
     @abstractmethod
-    def store_recording(self, directory: Path, filename: Optional[str] = None) -> bool:
+    def store_recording(self, directory: Path, filename: Optional[str] = None, timestamps: Optional[list] = None) -> bool:
         "Stores the recording at given directory with (optional) given filename. Is overwritten by subclass."
         pass
 

@@ -573,7 +573,6 @@ class RpMainInterface:
 
     def pose(self,pos):
       
-        print("Moving to", pos)
         self.robot.move(pos)
         return "Moved"
 

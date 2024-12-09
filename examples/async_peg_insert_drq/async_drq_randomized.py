@@ -51,12 +51,12 @@ flags.DEFINE_integer("seed", 42, "Random seed.")
 flags.DEFINE_bool("save_model", False, "Whether to save model.")
 flags.DEFINE_integer("critic_actor_ratio", 4, "critic to actor update ratio.")
 
-flags.DEFINE_integer("max_steps", 1000000, "Maximum number of training steps.")
+flags.DEFINE_integer("max_steps", 100000, "Maximum number of training steps.")
 flags.DEFINE_integer("replay_buffer_capacity", 200000, "Replay buffer capacity.")
 
 flags.DEFINE_integer("random_steps", 300, "Sample random actions for this many steps.")
 flags.DEFINE_integer("training_starts", 300, "Training starts after this step.")
-flags.DEFINE_integer("steps_per_update", 30, "Number of steps per update the server.")
+flags.DEFINE_integer("steps_per_update", 300, "Number of steps per update the server.")
 
 flags.DEFINE_integer("log_period", 10, "Logging period.")
 flags.DEFINE_integer("eval_period", 2000, "Evaluation period.")
@@ -70,7 +70,7 @@ flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("encoder_type", "resnet-pretrained", "Encoder type.")
 flags.DEFINE_string("demo_path", None, "Path to the demo data.")
 flags.DEFINE_integer("checkpoint_period", 0, "Period to save checkpoints.")
-flags.DEFINE_string("checkpoint_path", None, "Path to save checkpoints.")
+flags.DEFINE_string("checkpoint_path", '/home/shilber/delete/test1/', "Path to save checkpoints.")
 
 flags.DEFINE_integer(
     "eval_checkpoint_step", 0, "evaluate the policy from ckpt at this step"
@@ -97,6 +97,9 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
     """
     This is the actor loop, which runs when "--actor" is set to True.
     """
+
+
+
     if FLAGS.eval_checkpoint_step:
         success_counter = 0
         time_list = []
@@ -168,8 +171,7 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
                     seed=key,
                     deterministic=False,
                 )
-                print("\n\n\ sampled action")
-                print(actions)
+               
                 actions = np.asarray(jax.device_get(actions))
 
         # Step environment
@@ -199,6 +201,7 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
                 client.request("send-stats", stats)
                 running_return = 0.0
                 obs, _ = env.reset()
+        
 
         if step % FLAGS.steps_per_update == 0:
             client.update()
@@ -208,13 +211,14 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         if step % FLAGS.log_period == 0:
             stats = {"timer": timer.get_average_times()}
             client.request("send-stats", stats)
-
+        print("reached complete end")
 
 ##############################################################################
 
 
 def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
-    batch_size= 32
+    
+    batch_size= 256
   
     assert batch_size % num_devices == 0
     """
@@ -276,21 +280,32 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
         device=sharding.replicate(),
     )
 
+
+
+
+
     # wait till the replay buffer is filled with enough data
     timer = Timer()
+    # Write content to the file
     for step in tqdm.tqdm(range(FLAGS.max_steps), dynamic_ncols=True, desc="learner"):
         # run n-1 critic updates and 1 critic + actor update.
         # This makes training on GPU faster by reducing the large batch transfer time from CPU to GPU
         for critic_step in range(FLAGS.critic_actor_ratio - 1):
             with timer.context("sample_replay_buffer"):
                 batch = next(replay_iterator)
-            """          demo_batch = next(demo_iterator)
+                demo_batch = next(demo_iterator)
                 batch = concat_batches(batch, demo_batch, axis=0)
-            """
+               
+
+
+
             with timer.context("train_critics"):
                 agent, critics_info = agent.update_critics(
                     batch,
                 )
+        
+
+
         with timer.context("train"):
 
             batch = next(replay_iterator)
@@ -314,7 +329,7 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
             assert FLAGS.checkpoint_path is not None
             checkpoints.save_checkpoint(
                 FLAGS.checkpoint_path, agent.state, step=update_steps, keep=100
-            )
+            ) 
 
         update_steps += 1
 
@@ -335,15 +350,13 @@ def main(_):
     )
     env = GripperCloseEnv(env)
     if FLAGS.actor:
-       """  env = SpacemouseIntervention(env) """
+        env = SpacemouseIntervention(env)
     env = RelativeFrame(env)
     env = Quat2EulerWrapper(env)
     env = SERLObsWrapper(env)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
     env = RecordEpisodeStatistics(env)
 
-    print("Keys")
-    print(env.observation_space.keys())
     image_keys = [key for key in env.observation_space.keys() if key != "state"]
 
     rng, sampling_rng = jax.random.split(rng)

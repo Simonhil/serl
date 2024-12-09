@@ -4,9 +4,7 @@ import logging
 from typing import Optional
 import time
 
-from robot_servers.hardware_cameras import DiscreteCamera
-
-
+from real_robot_env.robot.hardware_cameras import DiscreteCamera
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,8 +16,8 @@ class Azure(DiscreteCamera):
     This class inherits its functions from `real_robot_env.robot.hardware_cameras.DiscreteCamera`.
     """
 
-    def __init__(self, device_id, name = None, height = 512, width = 512):
-        super().__init__(device_id, name if name else f"Azure_{device_id}", height, width)
+    def __init__(self, device_id, name = None, height = 512, width = 512, start_frame_latency = 0):
+        super().__init__(device_id, name if name else f"Azure_{device_id}", height, width, start_frame_latency)
 
         self.__set_device_configuration() # sets self.device_config
         self.device = None

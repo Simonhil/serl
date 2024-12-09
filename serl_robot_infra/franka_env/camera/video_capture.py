@@ -26,7 +26,7 @@ class VideoCapture:
         while self.enable:
             time.sleep(0.01)
             if self.type == "oak-d":
-                frame = self.cap._get_sensors()
+                frame = self.cap._get_sensors()["rgb"]
                 ret = True
             else:
                 ret, frame = self.cap.read()
