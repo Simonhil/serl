@@ -35,6 +35,7 @@ class EncodingWrapper(nn.Module):
         encoded = []
         for image_key in self.image_keys:
             image = observations[image_key]
+            
             if not is_encoded:
                 if self.enable_stacking:
                     # Combine stacking and channels into a single dimension
@@ -43,7 +44,15 @@ class EncodingWrapper(nn.Module):
                     if len(image.shape) == 5:
                         image = rearrange(image, "B T H W C -> B H W (T C)")
 
+
+
+
+            
+
+
+
             image = self.encoder[image_key](image, train=train, encode=not is_encoded)
+            
 
             if stop_gradient:
                 image = jax.lax.stop_gradient(image)

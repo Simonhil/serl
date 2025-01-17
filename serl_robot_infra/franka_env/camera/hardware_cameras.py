@@ -18,7 +18,7 @@ import shutil
 # I installed this through:
 #  pip install --trusted-host pypi.python.org moviepy
 #  pip install imageio-ffmpeg
-from moviepy.editor import VideoFileClip
+from moviepy.editor import *
 
 from franka_env.camera.hardware_devices import DiscreteDevice, ContinuousDevice
 

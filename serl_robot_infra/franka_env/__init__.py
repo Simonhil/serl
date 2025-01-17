@@ -30,3 +30,13 @@ register(
     entry_point="franka_env.envs.bin_relocation_env:FrankaBinRelocation",
     max_episode_steps=100,
 )
+register(
+    id="FrankaBoxPushing-Vision-v0",
+    entry_point="franka_env.envs.box_pushing_env:FrankaBoxPushing",
+    max_episode_steps=100,
+)
+register(
+    id="FrankaBoxPushing-Vision-v1",
+    entry_point="franka_env.envs.box_pushing_env:FrankaBoxPushingVisual",
+    max_episode_steps=100,
+)

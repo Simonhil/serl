@@ -23,3 +23,25 @@ class SERLObsWrapper(gym.ObservationWrapper):
             **(obs["images"]),
         }
         return obs
+
+class SERLObsWrapperVisual(gym.ObservationWrapper):
+    """
+    This observation wrapper treat the observation space as a dictionary
+    of a flattened state space and the images.
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = gym.spaces.Dict(
+            {
+               
+                **(self.env.observation_space["images"]),
+            }
+        )
+
+    def observation(self, obs):
+        obs = {
+           
+            **(obs["images"]),
+        }
+        return obs

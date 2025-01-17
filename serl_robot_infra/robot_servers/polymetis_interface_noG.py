@@ -200,11 +200,13 @@ class RepFrankaServer:
         """Resets Joints (needed after running for hours)"""
         # First Stop impedance
         try:
-            self.arm.reset()
+            self.arm.robot.move_to_joint_positions(self.reset_joint_target)
             #self.clear()
         except:
             print("impedance Not Running")
-        time.sleep(3)
+        self.start_impedance()
+        time.sleep(1)
+        print("awake")
       
 
 

@@ -19,12 +19,19 @@ class BinaryClassifier(nn.Module):
 
     @nn.compact
     def __call__(self, x, train=False):
+
+
+       
+
         x = self.encoder_def(x, train=train)
         x = nn.Dense(self.hidden_dim)(x)
         x = nn.Dropout(0.1)(x, deterministic=not train)
         x = nn.LayerNorm()(x)
         x = nn.relu(x)
         x = nn.Dense(1)(x)
+
+
+        
         return x
 
 
@@ -32,7 +39,7 @@ def create_classifier(
     key: jnp.ndarray,
     sample: Dict,
     image_keys: List[str],
-    pretrained_encoder_path: str = "./resnet10_params.pkl",
+    pretrained_encoder_path: str = "/home/shilber/Downloads/resnet10_params.pkl",
 ):
     pretrained_encoder = resnetv1_configs["resnetv1-10-frozen"](
         pre_pooling=True,

@@ -2,16 +2,19 @@
 
 import time
 from functools import partial
+import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from absl import app, flags
 from flax.training import checkpoints
+import orbax
 
 import gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
 import tqdm
+
 
 
 from franka_env.envs.relative_env import RelativeFrame
@@ -71,12 +74,12 @@ flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("encoder_type", "resnet-pretrained", "Encoder type.")
 flags.DEFINE_string("demo_path", None, "Path to the demo data.")
 flags.DEFINE_integer("checkpoint_period", 0, "Period to save checkpoints.")
-flags.DEFINE_string("checkpoint_path", '/home/shilber/delete/test1/', "Path to save checkpoints.")
+flags.DEFINE_string("checkpoint_path", '/home/shilber/delete/test1', "Path to save checkpoints.")
 
 flags.DEFINE_integer(
     "eval_checkpoint_step", 0, "evaluate the policy from ckpt at this step"
 )
-flags.DEFINE_integer("eval_n_trajs", 5, "Number of trajectories for evaluation.")
+flags.DEFINE_integer("eval_n_trajs", 10, "Number of trajectories for evaluation.")
 
 flags.DEFINE_boolean(
     "debug", False, "Debug mode."
@@ -99,12 +102,27 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
     """
     This is the actor loop, which runs when "--actor" is set to True.
     """
+    """ nessecarz for newer checkpoint version """
+
+    mgr_options = orbax.checkpoint.CheckpointManagerOptions(
+    create=True, max_to_keep=100, keep_period=2, step_prefix='checkpoint')
+    ckpt_mgr = orbax.checkpoint.CheckpointManager(
+    FLAGS.checkpoint_path,
+    orbax.checkpoint.Checkpointer(orbax.checkpoint.PyTreeCheckpointHandler()), mgr_options)
+
+
+
+    testfile = open("example.txt", "a")
+
+    env.reset(joint_reset=True)
 
 
     if FLAGS.eval_checkpoint_step:
         success_counter = 0
         time_list = []
+        restore_args = flax.training.orbax_utils.restore_args_from_target(agent.state, mesh=None)
 
+        """ ckpt_mgr.restore(FLAGS.eval_checkpoint_step, items=agent.state, restore_kwargs={'restore_args': restore_args}) """
         ckpt = checkpoints.restore_checkpoint(
             FLAGS.checkpoint_path,
             agent.state,
@@ -112,10 +130,14 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         )
         agent = agent.replace(state=ckpt)
 
+        print("checkpoint\n\n\n\n\n\n\n\n\n")
+        
+    
         for episode in range(FLAGS.eval_n_trajs):
             obs, _ = env.reset()
             done = False
             start_time = time.time()
+            
             while not done:
                 actions = agent.sample_actions(
                     observations=jax.device_put(obs),
@@ -151,10 +173,17 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
     client.recv_network_callback(update_params)
     obs, _ = env.reset()
     done = False
-
     # training loop
     timer = Timer()
     running_return = 0.0
+
+
+
+    testfile.write(str(agent))
+    testfile.close()
+
+
+
 
     for step in tqdm.tqdm(range(FLAGS.max_steps), dynamic_ncols=True):
         timer.tick("total")
@@ -221,6 +250,15 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
 
 
 def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
+
+
+    mgr_options = orbax.checkpoint.CheckpointManagerOptions(
+    create=True, max_to_keep=100, keep_period=2, step_prefix='checkpoint')
+    ckpt_mgr = orbax.checkpoint.CheckpointManager(
+    FLAGS.checkpoint_path,
+    orbax.checkpoint.Checkpointer(orbax.checkpoint.PyTreeCheckpointHandler()), mgr_options)
+
+
     
     batch_size= 128
   
@@ -336,6 +374,9 @@ def learner(rng, agent: DrQAgent, replay_buffer, demo_buffer):
             checkpoints.save_checkpoint(
                 FLAGS.checkpoint_path, agent.state, step=update_steps, keep=100
             ) 
+            """ save_args = flax.training.orbax_utils.save_args_from_target(agent.state)
+            ckpt_mgr.save(update_steps, agent.state, save_kwargs={'save_args': save_args}) """
+
 
         update_steps += 1
 

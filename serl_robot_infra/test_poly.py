@@ -18,7 +18,8 @@ from scipy.spatial.transform import Rotation as R
 
 #from polymetis import Gripperinterface
 
-reset_joint_target =  torch.tensor([ 0.0047,  0.5399, -0.0904, -1.5292,  0.0381,  2.0910, -0.3868])
+reset_joint_target =  torch.tensor([4.5901e-04,  6.7075e-01, -9.7745e-02, -1.4831e+00,  8.5626e-02,
+         2.1018e+00, -5.1625e-01])
 
 if __name__ == "__main__":
     # Initialize robot interface
@@ -27,25 +28,62 @@ if __name__ == "__main__":
         port = 50053,
 
     )
-    """  gripper = GripperInterface (
+    gripper = GripperInterface (
         ip_address = "141.3.53.63",
-        port = 50052
+        port = 50054
     ) 
-        """
+       
       # Reset
-    robot.set_home_pose(reset_joint_target)
-    """ robot.go_home()   """# Get joint positions
+    """ robot.move_to_joint_positions(reset_joint_target) """
+    """  robot.set_home_pose(reset_joint_target)
+    robot.go_home()   # Get joint positions
     pos  = robot.get_joint_positions()
+    print(pos)
+    """
+
+
+    print("gripper")
+
+
+    speed = 0.3
+    force = 1 
+    state = gripper.get_state()
+    print(state)
+
+    gripper.goto(0.08, speed, force)
+
+    time.sleep(1)
+
+    state = gripper.get_state()
+    print(state)
+
+
+    gripper.goto(0.0, speed, force)
+
+
+
+
+
+
+    pass
+
     """ pos, quat = robot.get_ee_pose()
-    
     rot = torch.Tensor(quat_2_euler(quat))
     pos = torch.concat ((pos, rot)) """
-    print(f"Current positions: {pos}")
+    """ print(f"Current positions: {pos}") """
     time.sleep(5)
     # Command robot to pose (move 4th and 6th joint)
     joint_positions_desired = torch.tensor([ 0.2311,  0.3784, -0.3684, -1.8208,  0.1226,  2.1922, -0.5033])
-    newposQuat = [ 6.3779e-01, -6.7047e-02,  3.4509e-01,  3.0880e+00, -1.4643e-03,
-         3.0936e-01]
+
+
+
+    TARGET_POSE =torch.Tensor(
+        
+      [ 0.7086, -0.0420,  0.2486,  3.1245,  0.0340,  0.2865]
+        
+    )
+
+    newposQuat = TARGET_POSE + torch.Tensor([0.0, 0.0, 0.1, 0.0, 0.0, 0.0])
     new_quat = torch.Tensor(euler_2_quat(torch.Tensor(newposQuat[3:])))
     new_pos = torch.Tensor(newposQuat[:3])
 
@@ -55,15 +93,12 @@ if __name__ == "__main__":
     "ee_quat_desired": new_quat,
    
         }) """
-    robot.move_to_ee_pose(new_pos, new_quat, )
-    robot.move_to_ee_pose(new_pos, new_quat,)
-
- 
+    """  robot.move_to_ee_pose(new_pos, new_quat, ) """
    
-    print(f"\nMoving joints to: {joint_positions_desired} ...\n")
+    """ print(f"\nMoving joints to: {joint_positions_desired} ...\n") """
     """  state_log = robot.move_to_joint_positions(joint_positions_desired)
     """
-    # Get updated joint positions
+    """  # Get updated joint positions
     state = robot.get_joint_positions()
     corioles= Coriolis(robot.robot_model)
     test_output= robot.get_ee_pose()
@@ -71,9 +106,8 @@ if __name__ == "__main__":
 
     print(f"testresult: {state}")
 
-    
-    speed = 0.3
-    force = 130 
+     """
+
     """   gripper.goto( 0.02, speed, force)
 
         time.sleep(1)
@@ -83,13 +117,12 @@ if __name__ == "__main__":
 
     """
 
-    print("complete")
-    pos  = robot.get_joint_positions()
+    """ pos  = robot.get_joint_positions()
     pos, quat = robot.get_ee_pose()
     
     rot = torch.Tensor(quat_2_euler(quat))
-    pos = torch.concat ((pos, rot))
-    print(f"Current positions: {pos}")
+    pos = torch.concat ((pos, rot)) """
+    
     #robot.go_home()
     #test gripper
 

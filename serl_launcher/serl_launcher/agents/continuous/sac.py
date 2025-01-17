@@ -311,7 +311,11 @@ class SACAgent(flax.struct.PyTreeNode):
         Sample actions from the policy network, **using an external RNG** (or approximating the argmax by the mode).
         The internal RNG will not be updated.
         """
+
+
         dist = self.forward_policy(observations, rng=seed, train=False)
+
+
         if argmax:
             assert seed is None, "Cannot specify seed when sampling deterministically"
             return dist.mode()

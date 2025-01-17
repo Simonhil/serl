@@ -1,15 +1,13 @@
 import time
 from franka_env.envs.peg_env.config import PegEnvConfig
-from polymetis.gripper_interface import GripperInterface
-import torch
 
-from polymetis import RobotInterface
-from robot_servers.polymetis_interface_noG import RpMainInterface
-from test_poly import euler_2_quat, quat_2_euler
-from torchcontrol.modules.feedforward import Coriolis
+
+
+
+
 
 from scipy.spatial.transform import Rotation
-
+import requests
 
 
 
@@ -26,24 +24,30 @@ from scipy.spatial.transform import Rotation
 ip="141.3.53.63"
 rb_port =  50053
 g_port = 50052
-reset_joint_target =  torch.tensor([-0.1400, -0.0200,  0.0500, -1.5700,  0.0500,  1.5000, -0.9100])
-position_d_ = torch.tensor([ 0.6886, -0.0874,  0.2874])
-orientation_d_ = torch.tensor([ 0.9416, -0.3357, -0.0228, -0.0138])
-target_pos = torch.tensor([ 0.6886, -0.0874,  0.2874])
-target_or = torch.tensor([ 0.9416, -0.3357, -0.0228, -0.0138])
+reset_joint_target =  [-0.1400, -0.0200,  0.0500, -1.5700,  0.0500,  1.5000, -0.9100]
+position_d_ = [ 0.6886, -0.0874,  0.2874]
+orientation_d_ = [ 0.9416, -0.3357, -0.0228, -0.0138]
+target_pos = [ 0.6886, -0.0874,  0.2874]
+target_or = [ 0.9416, -0.3357, -0.0228, -0.0138]
+
+
+url = "http://127.0.0.1:5000/"
+
+
+
 
 if __name__ == "__main__":
     # Initialize robot interface
-    robot = RpMainInterface(ip,rb_port,g_port,"Franka", reset_joint_target, PegEnvConfig)
-    
-    # Reset
 
 
     # Get joint positions
     print("innitialised")
 
-    pos  = robot.get_q()
-    pos, quat = robot.get_pos()
+    pos  = requests.post( url + "/getstate").json()
+    requests.post(url + "jointreset")
+    print(pos)
+
+    """ pos, quat = robot.get_pos()
     
     rot = torch.Tensor(quat_2_euler(quat))
     pos = torch.concat ((pos, rot))
@@ -56,5 +60,5 @@ if __name__ == "__main__":
     new_pos = torch.Tensor(newposQuat[:3])
 
     robot.pose(torch.concat((new_pos, new_quat))
-        )
+        ) """
     print("done")

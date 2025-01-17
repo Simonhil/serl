@@ -14,6 +14,23 @@ setup(
         "opencv-python",
         "lz4",
         "agentlace@git+https://github.com/youliangtan/agentlace.git@cf2c337c5e3694cdbfc14831b239bd657bc4894d",
+
+
+
+        "gym>=0.26",
+        "pyrealsense2",
+        "pymodbus==2.5.3",
+        "opencv-python",
+        "pyquaternion",
+        #"pyspacemouse", 
+        "hidapi",
+        "pyyaml",
+        "rospkg",
+        "scipy",
+        "requests",
+        "flask",
+        "defusedxml",
+        "pynput",
     ],
     packages=find_packages(),
     zip_safe=False,

@@ -1,5 +1,4 @@
 import numpy as np
-from torch import tensor
 from franka_env.envs.franka_env import DefaultEnvConfig
 """   "top": {
         "serial_number": "14442C10113FE2D200",
@@ -36,7 +35,7 @@ class PegEnvConfig(DefaultEnvConfig):
     )
     """ + np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0]) """
     RESET_POSE = TARGET_POSE + np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0])
-    REWARD_THRESHOLD: np.ndarray = np.array([0.01,0.01,0.005,6.3,0.2,0.2])
+    REWARD_THRESHOLD: np.ndarray = np.array([0.01,0.01,0.005,10,3,3])
     APPLY_GRIPPER_PENALTY = False
     ACTION_SCALE = np.array([0.02, 0.1, 1])
     RANDOM_RESET = True
@@ -107,6 +106,7 @@ class PegEnvConfig(DefaultEnvConfig):
     ROBOT_PORT = 50053
     GRIPPER_PORT= 50054
     GRIPPER_TYPE= "Franka"
-    RESET_JOINT_TARGET= tensor([ 0.0047,  0.5399, -0.0904, -1.5292,  0.0381,  2.0910, -0.3868])
+    RESET_JOINT_TARGET= np.array([ 0.0047,  0.5399, -0.0904, -1.5292,  0.0381,  2.0910, -0.3868])
+    #RESET_JOINT_TARGET= np.array([4.5901e-04,  6.7075e-01, -9.7745e-02, -1.4831e+00,  8.5626e-02, 2.1018e+00, -5.1625e-01])
    
 

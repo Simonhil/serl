@@ -6,7 +6,7 @@ python async_drq_randomized.py "$@" \
     --env FrankaPegInsert-Vision-v0 \
     --exp_name=serl_dev_drq_rlpd10demos_peg_insert_random_resnet \
     --seed 0 \
-    --random_steps 0\
+    --random_steps 100\
     --training_starts 200 \
     --encoder_type resnet-pretrained \
-    --demo_path /home/shilber/delete/20_hex_front_wrist.pkl\
+    --demo_path /home/shilber/delete/good_examples/hex_random_reset.pkl\

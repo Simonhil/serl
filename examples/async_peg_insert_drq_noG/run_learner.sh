@@ -10,6 +10,6 @@ python async_drq_randomized.py "$@" \
     --critic_actor_ratio 4 \
     --eval_period 2000 \
     --encoder_type resnet-pretrained \
-    --demo_path /home/shilber/delete/20_hex_front_wrist.pkl\
-    --checkpoint_period 3000 \
+    --demo_path /home/shilber/delete/good_examples/hex_random_reset.pkl\
+    --checkpoint_period 2500 \
     --checkpoint_path /home/shilber/delete/test1\

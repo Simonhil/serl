@@ -37,6 +37,9 @@ class RelativeFrame(gym.Wrapper):
             # Homogeneous transformation matrix from reset pose's relative frame to base frame
             self.T_r_o_inv = np.zeros((4, 4))
 
+       
+
+
     def step(self, action: np.ndarray):
         # action is assumed to be (x, y, z, rx, ry, rz, gripper)
         # Transform action from end-effector frame to base frame
@@ -58,7 +61,6 @@ class RelativeFrame(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
-
         # Update adjoint matrix
         self.adjoint_matrix = construct_adjoint_matrix(obs["state"]["tcp_pose"])
         if self.include_relative_pose:
@@ -86,6 +88,8 @@ class RelativeFrame(gym.Wrapper):
             p_b_r = T_b_r[:3, 3]
             theta_b_r = R.from_matrix(T_b_r[:3, :3]).as_quat()
             obs["state"]["tcp_pose"] = np.concatenate((p_b_r, theta_b_r))
+        
+
 
         return obs
 

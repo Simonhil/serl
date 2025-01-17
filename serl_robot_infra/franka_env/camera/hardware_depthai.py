@@ -78,7 +78,7 @@ class DepthAI(DiscreteCamera):
         return {'time':timestamp, 'rgb': frame}
 
     def close(self):
-        self.device.close()
+        self.device_id.close()
         return True
 
     @staticmethod
